@@ -1,3 +1,39 @@
+<?xml version="1.0" encoding="utf-8" ?>
 <resources>
-    <string name="app_name">MiPrimeraApp</string>
+    <string name="app_name">Pago Flex</string>
+
+    <!--Pantalla Formulario -->
+    <string name="titulo_formulario">Registro de Usuario</string>
+    <string name="banner_titulo">¡Bienvenido a PagoFlex! </string>
+    <string name="seccion_datos">Datos Personales </string>
+    <string name="seccion_preferencias">Preferencias </string>
+
+    <string name="campo_nombre">Nombre </string>
+    <string name="campo_correo">Correo electronico</string>
+    <string name="campo_contrasena">Contraseña </string>
+
+    <string name="etiqueta_nivel">Nivel de usuario </string>
+    <string name="opcion_noticias">Deseo recibir noticias y novedades </string>
+    <string name="opcion_terminos">Acepto los términos y condiciones </string>
+
+    <string name="btn_registro">Registrarse </string>
+    <string name="btn_limpiar">Limpiar formulario </string>
+    <string name="registro_exitoso"> ¡Registro exitoso! Bienvenido/a %1$s </string>
+
+    <!--Pantalla perfil-->
+    <string name="titulo_perfil">Mi perfil </string>
+    <string name="seccion_sobre_mi">Sobre mi </string>
+    <string name="seccion_intereses">Intereses </string>
+
+    <string name="btn_seguir">Seguir </string>
+    <string name="btn_siguiendo">Siguiendo</string>
+
+    <!--Descripciones de accesibilidad - Talback-->
+    <string name="cd_banner">Banner de PagoFlex</string>
+    <string name="cd_portada">Imagen de portada del perfil</string>
+    <string name="cd_avatar">Imagen de perfil del usuario</string>
+
+    <string name="cd_mostrar_constrasena">Mostrar contraseña</string>
+    <string name="cd_ocultar_contraseña">Ocultar contraseña</string>
+
 </resources>
