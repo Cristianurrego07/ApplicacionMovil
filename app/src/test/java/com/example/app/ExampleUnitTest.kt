@@ -1,4 +1,4 @@
-package com.example.miprimeraapp
+package com.example.app
 
 import org.junit.Test
 
