@@ -7,6 +7,9 @@ data class Compromiso(
     val subtitulo: String,
     val monto: Double,
     val fechaVencimiento: String,
-    val estado: String, // "Pendiente", "Pagado", "Vencido"
-    val empresa: String = ""
+    val estado: String, // "Pendiente", "Pagada", "Vencido", "En revisión"
+    val empresa: String = "",
+    val folio: String = "",
+    val concepto: String = "",
+    val recargo: Int = 0
 )

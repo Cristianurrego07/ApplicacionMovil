@@ -4,8 +4,10 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import com.example.miprimeraapp.data.UsuarioDbHelper
 import com.example.miprimeraapp.model.CobranzaEmpresa
+import com.example.miprimeraapp.model.Comprobante
 import com.example.miprimeraapp.model.Compromiso
 import com.example.miprimeraapp.model.ReporteProblema
+import com.example.miprimeraapp.model.Servicio
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,6 +17,12 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
 
     private val _compromisos = MutableStateFlow<List<Compromiso>>(emptyList())
     val compromisos: StateFlow<List<Compromiso>> = _compromisos.asStateFlow()
+
+    private val _servicios = MutableStateFlow<List<Servicio>>(emptyList())
+    val servicios: StateFlow<List<Servicio>> = _servicios.asStateFlow()
+
+    private val _comprobantes = MutableStateFlow<List<Comprobante>>(emptyList())
+    val comprobantes: StateFlow<List<Comprobante>> = _comprobantes.asStateFlow()
 
     private val _reportes = MutableStateFlow<List<ReporteProblema>>(emptyList())
     val reportes: StateFlow<List<ReporteProblema>> = _reportes.asStateFlow()
@@ -26,9 +34,27 @@ class PagoFlexViewModel(application: Application) : AndroidViewModel(application
         _compromisos.value = db.listarCompromisos(usuarioId)
     }
 
+    fun cargarServicios(usuarioId: Long) {
+        _servicios.value = db.listarServicios(usuarioId)
+    }
+
+    fun cargarComprobantes(usuarioId: Long) {
+        _comprobantes.value = db.listarComprobantes(usuarioId)
+    }
+
     fun pagarCompromiso(id: Long, usuarioId: Long) {
         db.pagarCompromiso(id)
         cargarCompromisos(usuarioId)
+        cargarComprobantes(usuarioId)
+    }
+
+    fun confirmarPago(folio: String, usuarioId: Long, medioPago: String = "Pago simulado"): Comprobante? {
+        val comprobante = db.confirmarPago(folio, medioPago)
+        if (comprobante != null) {
+            cargarCompromisos(usuarioId)
+            cargarComprobantes(usuarioId)
+        }
+        return comprobante
     }
 
     fun cargarReportes() {

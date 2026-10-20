@@ -16,7 +16,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,7 +38,6 @@ import com.example.miprimeraapp.model.PerfilUiState
 import com.example.miprimeraapp.model.Usuario
 import com.example.miprimeraapp.ui.components.AvatarCircular
 import com.example.miprimeraapp.ui.components.EtiquetaInteres
-import com.example.miprimeraapp.ui.components.TarjetaEstadistica
 import com.example.miprimeraapp.ui.components.TarjetaSeccion
 import com.example.miprimeraapp.ui.theme.Dimens
 import com.example.miprimeraapp.ui.theme.MiRegistroTheme
@@ -61,7 +59,6 @@ fun PerfilScreen(
 
     PerfilContent(
         uiState = uiState.copy(perfil = perfil),
-        onAlternarSeguir = viewModel::onAlternarSeguir,
         onVolver = onVolver
     )
 }
@@ -70,7 +67,6 @@ fun PerfilScreen(
 @Composable
 fun PerfilContent(
     uiState: PerfilUiState,
-    onAlternarSeguir: () -> Unit,
     onVolver: () -> Unit = {}
 ) {
     val perfil = uiState.perfil
@@ -79,7 +75,6 @@ fun PerfilContent(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text(stringResource(R.string.titulo_perfil)) },
-
                 navigationIcon = {
                     IconButton(onClick = onVolver) {
                         Icon(
@@ -88,23 +83,6 @@ fun PerfilContent(
                         )
                     }
                 }
-            )
-        },
-
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = onAlternarSeguir,
-                icon = {
-                    Icon(
-                        painter = painterResource(if (uiState.loSigo) R.drawable.ic_check else R.drawable.ic_seguir),
-                        contentDescription = null
-                    )
-                },
-                text = {
-                    Text(stringResource(if (uiState.loSigo) R.string.btn_siguiendo else R.string.btn_seguir))
-                },
-                containerColor = MaterialTheme.colorScheme.tertiary,
-                contentColor = MaterialTheme.colorScheme.onTertiary
             )
         }
     ) { innerPadding ->
@@ -145,12 +123,6 @@ fun PerfilContent(
                 modifier = Modifier.padding(Dimens.espacioPantalla),
                 verticalArrangement = Arrangement.spacedBy(Dimens.espacioMedio)
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(Dimens.espacioChico)) {
-                    TarjetaEstadistica(perfil.publicaciones.toString(), "Posts", Modifier.weight(1f))
-                    TarjetaEstadistica(perfil.seguidores.toString(), "Seguidores", Modifier.weight(1f))
-                    TarjetaEstadistica(perfil.siguiendo.toString(), "Siguiendo", Modifier.weight(1f))
-                }
-
                 TarjetaSeccion(titulo = stringResource(R.string.seccion_sobre_mi)) {
                     Text(text = perfil.descripcion, style = MaterialTheme.typography.bodyMedium)
                 }
@@ -166,7 +138,7 @@ fun PerfilContent(
                     }
                 }
 
-                Spacer(Modifier.height(72.dp))
+                Spacer(Modifier.height(32.dp))
             }
         }
     }
@@ -201,9 +173,6 @@ private val perfilPreview = Perfil(
     profesion = "Desarrolladora móvil",
     ciudad = "Santiago, Chile",
     descripcion = "Texto de ejemplo para la vista previa.",
-    seguidores = 128,
-    siguiendo = 96,
-    publicaciones = 24,
     intereses = listOf("Kotlin", "Compose", "Diseño UI")
 )
 
@@ -211,7 +180,7 @@ private val perfilPreview = Perfil(
 @Composable
 private fun PerfilPreview() {
     MiRegistroTheme {
-        PerfilContent(uiState = PerfilUiState(perfil = perfilPreview), onAlternarSeguir = {})
+        PerfilContent(uiState = PerfilUiState(perfil = perfilPreview))
     }
 }
 
@@ -219,6 +188,6 @@ private fun PerfilPreview() {
 @Composable
 private fun PerfilOscuroPreview() {
     MiRegistroTheme(darkTheme = true) {
-        PerfilContent(uiState = PerfilUiState(perfil = perfilPreview, loSigo = true), onAlternarSeguir = {})
+        PerfilContent(uiState = PerfilUiState(perfil = perfilPreview))
     }
 }
