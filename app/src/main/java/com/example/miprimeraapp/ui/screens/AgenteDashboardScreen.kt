@@ -1,4 +1,4 @@
-package cl.duocuc.miregistro.ui.screens
+package com.example.miprimeraapp.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,11 +11,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import cl.duocuc.miregistro.R
-import cl.duocuc.miregistro.model.ReporteProblema
-import cl.duocuc.miregistro.model.Usuario
-import cl.duocuc.miregistro.ui.theme.PagoFlexPurple
-import cl.duocuc.miregistro.viewmodel.PagoFlexViewModel
+import com.example.miprimeraapp.R
+import com.example.miprimeraapp.model.ReporteProblema
+import com.example.miprimeraapp.model.Usuario
+import com.example.miprimeraapp.ui.theme.PagoFlexPurple
+import com.example.miprimeraapp.viewmodel.PagoFlexViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,7 +27,7 @@ fun AgenteDashboardScreen(
     viewModel: PagoFlexViewModel = viewModel()
 ) {
     val reportes by viewModel.reportes.collectAsStateWithLifecycle()
-    var selectedTab by remember { mutableStateOf(0) } // 0: Pendientes, 1: En proceso, 2: Resueltas
+    var selectedTab by remember { mutableStateOf(0) }
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()

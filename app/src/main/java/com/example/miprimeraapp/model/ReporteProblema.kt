@@ -1,4 +1,4 @@
-package cl.duocuc.miregistro.model
+package com.example.miprimeraapp.model
 
 data class ReporteProblema(
     val id: Long = 0,
