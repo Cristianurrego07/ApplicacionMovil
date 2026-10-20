@@ -1,4 +1,4 @@
-package cl.duocuc.miregistro.ui.screens
+package com.example.miprimeraapp.ui.screens
 
 import android.app.Activity
 import android.content.Intent
@@ -25,14 +25,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import cl.duocuc.miregistro.R
-import cl.duocuc.miregistro.data.ConvertidorImagen
-import cl.duocuc.miregistro.data.UsuarioDbHelper
-import cl.duocuc.miregistro.model.Usuario
-import cl.duocuc.miregistro.permisos.Permisos
-import cl.duocuc.miregistro.ui.components.AvatarCircular
-import cl.duocuc.miregistro.ui.theme.PagoFlexPurple
-import cl.duocuc.miregistro.ui.theme.ThemeManager
+import com.example.miprimeraapp.R
+import com.example.miprimeraapp.data.ConvertidorImagen
+import com.example.miprimeraapp.data.UsuarioDbHelper
+import com.example.miprimeraapp.model.Usuario
+import com.example.miprimeraapp.permisos.Permisos
+import com.example.miprimeraapp.ui.components.AvatarCircular
+import com.example.miprimeraapp.ui.theme.PagoFlexPurple
+import com.example.miprimeraapp.ui.theme.ThemeManager
 import kotlinx.coroutines.launch
 
 data class MetodoPago(
@@ -120,7 +120,6 @@ fun PerfilConfigScreen(
         usuarioActual?.avatar?.let { bytes -> ConvertidorImagen.aBitmap(bytes)?.asImageBitmap() }
     }
 
-    // Métodos de pago state (Solo para Usuario regular)
     val metodosPago = remember {
         mutableStateListOf(
             MetodoPago("Débito", "BancoEstado", "•••• 4589"),
@@ -292,7 +291,6 @@ fun PerfilConfigScreen(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Tarjeta de Perfil con Foto y Datos
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -324,7 +322,7 @@ fun PerfilConfigScreen(
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
-                    Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
 
                     Column(
                         modifier = Modifier.fillMaxWidth(),
@@ -338,7 +336,6 @@ fun PerfilConfigScreen(
                 }
             }
 
-            // Métodos de pago (Solo se muestra para clientes con rol Usuario, idRol == 1L)
             if (usuarioActual?.idRol == 1L || usuarioActual == null) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -367,7 +364,7 @@ fun PerfilConfigScreen(
                             }
                         }
 
-                        Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
 
                         metodosPago.forEach { metodo ->
                             Row(
@@ -398,7 +395,6 @@ fun PerfilConfigScreen(
                 }
             }
 
-            // Modo Oscuro / Claro
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)

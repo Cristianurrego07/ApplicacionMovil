@@ -1,4 +1,4 @@
-package cl.duocuc.miregistro.ui.screens
+package com.example.miprimeraapp.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -12,8 +12,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import cl.duocuc.miregistro.ui.theme.PagoFlexPurple
-import cl.duocuc.miregistro.viewmodel.AuthViewModel
+import com.example.miprimeraapp.ui.theme.PagoFlexPurple
+import com.example.miprimeraapp.viewmodel.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

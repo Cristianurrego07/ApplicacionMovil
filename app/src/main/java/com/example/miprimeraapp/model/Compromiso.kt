@@ -1,4 +1,4 @@
-package cl.duocuc.miregistro.model
+package com.example.miprimeraapp.model
 
 data class Compromiso(
     val id: Long = 0,

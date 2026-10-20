@@ -1,4 +1,4 @@
-package cl.duocuc.miregistro.ui.screens
+package com.example.miprimeraapp.ui.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,11 +12,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import cl.duocuc.miregistro.R
-import cl.duocuc.miregistro.model.Compromiso
-import cl.duocuc.miregistro.model.Usuario
-import cl.duocuc.miregistro.ui.theme.PagoFlexPurple
-import cl.duocuc.miregistro.viewmodel.PagoFlexViewModel
+import com.example.miprimeraapp.R
+import com.example.miprimeraapp.model.Compromiso
+import com.example.miprimeraapp.model.Usuario
+import com.example.miprimeraapp.ui.theme.PagoFlexPurple
+import com.example.miprimeraapp.viewmodel.PagoFlexViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -134,7 +134,6 @@ fun UsuarioHomeScreen(
                     .padding(innerPadding)
                     .padding(16.dp)
             ) {
-                // Total Pending Card
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)

@@ -1,14 +1,14 @@
-package cl.duocuc.miregistro.data
+package com.example.miprimeraapp.data
 
 import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
-import cl.duocuc.miregistro.model.CobranzaEmpresa
-import cl.duocuc.miregistro.model.Compromiso
-import cl.duocuc.miregistro.model.ReporteProblema
-import cl.duocuc.miregistro.model.Rol
-import cl.duocuc.miregistro.model.Usuario
+import com.example.miprimeraapp.model.CobranzaEmpresa
+import com.example.miprimeraapp.model.Compromiso
+import com.example.miprimeraapp.model.ReporteProblema
+import com.example.miprimeraapp.model.Rol
+import com.example.miprimeraapp.model.Usuario
 
 class UsuarioDbHelper(context: Context) :
     SQLiteOpenHelper(context, NOMBRE_BD, null, VERSION_BD) {

@@ -1,11 +1,11 @@
-package cl.duocuc.miregistro.viewmodel
+package com.example.miprimeraapp.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
-import cl.duocuc.miregistro.data.UsuarioDbHelper
-import cl.duocuc.miregistro.model.CobranzaEmpresa
-import cl.duocuc.miregistro.model.Compromiso
-import cl.duocuc.miregistro.model.ReporteProblema
+import com.example.miprimeraapp.data.UsuarioDbHelper
+import com.example.miprimeraapp.model.CobranzaEmpresa
+import com.example.miprimeraapp.model.Compromiso
+import com.example.miprimeraapp.model.ReporteProblema
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

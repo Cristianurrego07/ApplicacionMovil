@@ -1,4 +1,4 @@
-package cl.duocuc.miregistro.ui.screens
+package com.example.miprimeraapp.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,11 +11,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import cl.duocuc.miregistro.R
-import cl.duocuc.miregistro.model.CobranzaEmpresa
-import cl.duocuc.miregistro.model.Usuario
-import cl.duocuc.miregistro.ui.theme.PagoFlexPurple
-import cl.duocuc.miregistro.viewmodel.PagoFlexViewModel
+import com.example.miprimeraapp.R
+import com.example.miprimeraapp.model.CobranzaEmpresa
+import com.example.miprimeraapp.model.Usuario
+import com.example.miprimeraapp.ui.theme.PagoFlexPurple
+import com.example.miprimeraapp.viewmodel.PagoFlexViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -237,7 +237,7 @@ fun RegistrarCobranzaDialog(
     onDismiss: () -> Unit,
     onGuardar: (String, String, Double, String, String) -> Unit
 ) {
-    var codigo by remember { mutableStateOf("N° C-00130")}
+    var codigo by remember { mutableStateOf("N° C-00130") }
     var empresa by remember { mutableStateOf("Empresa Partner") }
     var montoStr by remember { mutableStateOf("50000") }
     var vencimiento by remember { mutableStateOf("30 jun. 2025") }

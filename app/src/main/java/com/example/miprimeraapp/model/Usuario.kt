@@ -1,4 +1,4 @@
-package cl.duocuc.miregistro.model
+package com.example.miprimeraapp.model
 
 data class Usuario(
     val nombre: String,
@@ -10,3 +10,4 @@ data class Usuario(
     val nombreRol: String = "",
     val avatar: ByteArray? = null
 )
+
