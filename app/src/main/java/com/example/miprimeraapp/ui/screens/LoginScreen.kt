@@ -81,7 +81,7 @@ fun LoginScreen(
                             val usuario = viewModel.recuperarContrasena(inputRecuperar)
                             if (usuario != null) {
                                 val nuevaClave = "PagoFlex2026"
-                                mensajeRecuperacion = "¡Contraseña restablecida a '$nuevaClave'! Correo de notificación enviado."
+                                mensajeRecuperacion = "Contraseña restablecida a '$nuevaClave'. Notificación enviada por correo."
                                 CorreoNotificador.enviarCorreo(
                                     context = context,
                                     destinatario = usuario.correo,

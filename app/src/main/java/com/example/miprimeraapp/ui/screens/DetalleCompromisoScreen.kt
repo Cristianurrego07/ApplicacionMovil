@@ -152,7 +152,7 @@ fun DetalleCompromisoScreen(
                                     tint = MaterialTheme.colorScheme.secondary
                                 )
                                 Text(
-                                    text = "¡Este compromiso ya ha sido pagado exitosamente!",
+                                    text = "Este compromiso ya fue pagado exitosamente",
                                     color = MaterialTheme.colorScheme.secondary,
                                     style = MaterialTheme.typography.bodyMedium
                                 )

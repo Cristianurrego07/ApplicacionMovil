@@ -100,7 +100,7 @@ fun PerfilConfigScreen(
             db.actualizarAvatar(usuarioActual!!.id, bytes)
             usuarioActual = db.buscarPorId(usuarioActual!!.id)
             scope.launch {
-                snackbarHostState.showSnackbar("¡Imagen de perfil guardada exitosamente en la Base de Datos!")
+                snackbarHostState.showSnackbar("Imagen de perfil guardada exitosamente en la base de datos.")
             }
         }
     }
@@ -126,7 +126,7 @@ fun PerfilConfigScreen(
                 db.actualizarAvatar(usuarioActual!!.id, bytes)
                 usuarioActual = db.buscarPorId(usuarioActual!!.id)
                 scope.launch {
-                    snackbarHostState.showSnackbar("¡Imagen de perfil guardada exitosamente en la Base de Datos!")
+                    snackbarHostState.showSnackbar("Imagen de perfil guardada exitosamente en la base de datos.")
                 }
             }
         }
@@ -264,7 +264,7 @@ fun PerfilConfigScreen(
                                     errorClave = null
 
                                     scope.launch {
-                                        snackbarHostState.showSnackbar("¡Contraseña actualizada con éxito en la Base de Datos!")
+                                        snackbarHostState.showSnackbar("Contraseña actualizada con éxito.")
                                     }
 
                                     CorreoNotificador.enviarCorreo(
@@ -448,7 +448,7 @@ fun PerfilConfigScreen(
                         )
                     }
                     Text(
-                        text = "📷 Cambiar foto de perfil (se guarda en BD)",
+                        text = "Cambiar foto de perfil",
                         style = MaterialTheme.typography.bodySmall,
                         color = PagoFlexPurple,
                         fontWeight = FontWeight.SemiBold,
@@ -545,7 +545,7 @@ fun PerfilConfigScreen(
                                             usuarioActual = db.buscarPorId(u.id)
                                             modoEdicion = false
                                             scope.launch {
-                                                snackbarHostState.showSnackbar("¡Perfil actualizado con éxito en la Base de Datos!")
+                                                snackbarHostState.showSnackbar("Perfil actualizado con éxito.")
                                             }
                                         }
                                     }
