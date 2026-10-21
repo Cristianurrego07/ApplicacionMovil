@@ -8,6 +8,6 @@ data class Usuario(
     val id: Long = 0,
     val idRol: Long = Rol.ID_USUARIO,
     val nombreRol: String = "",
-    val avatar: ByteArray? = null
+    val avatar: ByteArray? = null,
+    val rut: String = "12.345.678-9"
 )
-

@@ -1,8 +1,6 @@
 package com.example.miprimeraapp.ui.components
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
@@ -46,25 +44,6 @@ fun TarjetaEstadistica(
                 text = etiqueta,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun TarjetaEstadisticaPreview() {
-    MiRegistroTheme {
-        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TarjetaEstadistica(
-                "128",
-                "Seguidores",
-                Modifier.weight(1f)
-            )
-            TarjetaEstadistica(
-                "96",
-                "Siguiendo",
-                Modifier.weight(1f)
             )
         }
     }

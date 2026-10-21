@@ -5,17 +5,22 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import com.example.miprimeraapp.model.CobranzaEmpresa
+import com.example.miprimeraapp.model.Comprobante
 import com.example.miprimeraapp.model.Compromiso
 import com.example.miprimeraapp.model.ReporteProblema
 import com.example.miprimeraapp.model.Rol
+import com.example.miprimeraapp.model.Servicio
 import com.example.miprimeraapp.model.Usuario
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class UsuarioDbHelper(context: Context) :
     SQLiteOpenHelper(context, NOMBRE_BD, null, VERSION_BD) {
 
     companion object {
         private const val NOMBRE_BD = "pagoflex.db"
-        private const val VERSION_BD = 4
+        private const val VERSION_BD = 5
 
         private const val TABLA_ROLES = "roles"
         private const val ROL_ID = "id_rol"
@@ -23,6 +28,7 @@ class UsuarioDbHelper(context: Context) :
 
         private const val TABLA_USUARIOS = "usuarios"
         private const val USU_ID = "id_usuario"
+        private const val USU_RUT = "rut"
         private const val USU_NOMBRE = "nombre"
         private const val USU_CORREO = "correo"
         private const val USU_CONTRASENA = "contrasena"
@@ -30,8 +36,16 @@ class UsuarioDbHelper(context: Context) :
         private const val USU_ROL = "id_rol"
         private const val USU_AVATAR = "avatar"
 
+        private const val TABLA_SERVICIOS = "servicios"
+        private const val SER_ID = "id_servicio"
+        private const val SER_USUARIO = "id_usuario"
+        private const val SER_EMPRESA = "nombre_empresa"
+        private const val SER_RUT_PAGADOR = "rut_pagador"
+        private const val SER_ALIAS = "alias"
+
         private const val TABLA_COMPROMISOS = "compromisos"
         private const val COM_ID = "id_compromiso"
+        private const val COM_FOLIO = "folio"
         private const val COM_USUARIO = "usuario_id"
         private const val COM_TITULO = "titulo"
         private const val COM_SUBTITULO = "subtitulo"
@@ -39,6 +53,19 @@ class UsuarioDbHelper(context: Context) :
         private const val COM_VENCIMIENTO = "fecha_vencimiento"
         private const val COM_ESTADO = "estado"
         private const val COM_EMPRESA = "empresa"
+        private const val COM_CONCEPTO = "concepto"
+        private const val COM_RECARGO = "recargo"
+
+        private const val TABLA_PAGOS = "pagos"
+        private const val PAG_ID = "id_pago"
+        private const val PAG_COMPROBANTE = "numero_comprobante"
+        private const val PAG_FOLIO = "folio"
+        private const val PAG_EMPRESA = "empresa"
+        private const val PAG_CONCEPTO = "concepto"
+        private const val PAG_MONTO = "monto_pagado"
+        private const val PAG_FECHA = "fecha_hora"
+        private const val PAG_CANAL = "canal"
+        private const val PAG_MEDIO = "medio_pago"
 
         private const val TABLA_REPORTES = "reportes"
         private const val REP_ID = "id_reporte"
@@ -67,6 +94,7 @@ class UsuarioDbHelper(context: Context) :
         private const val SQL_CREAR_USUARIOS =
             "CREATE TABLE $TABLA_USUARIOS (" +
                 "$USU_ID INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "$USU_RUT TEXT NOT NULL DEFAULT '12.345.678-9', " +
                 "$USU_NOMBRE TEXT NOT NULL, " +
                 "$USU_CORREO TEXT NOT NULL UNIQUE, " +
                 "$USU_CONTRASENA TEXT NOT NULL, " +
@@ -74,19 +102,47 @@ class UsuarioDbHelper(context: Context) :
                 "$USU_AVATAR BLOB, " +
                 "$USU_ROL INTEGER NOT NULL REFERENCES $TABLA_ROLES($ROL_ID))"
 
-        private const val SQL_AGREGAR_AVATAR =
-            "ALTER TABLE $TABLA_USUARIOS ADD COLUMN $USU_AVATAR BLOB"
+        private const val SQL_CREAR_SERVICIOS =
+            "CREATE TABLE $TABLA_SERVICIOS (" +
+                "$SER_ID INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "$SER_USUARIO INTEGER NOT NULL REFERENCES $TABLA_USUARIOS($USU_ID), " +
+                "$SER_EMPRESA TEXT NOT NULL, " +
+                "$SER_RUT_PAGADOR TEXT NOT NULL, " +
+                "$SER_ALIAS TEXT NOT NULL)"
 
         private const val SQL_CREAR_COMPROMISOS =
             "CREATE TABLE $TABLA_COMPROMISOS (" +
                 "$COM_ID INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "$COM_FOLIO TEXT NOT NULL UNIQUE, " +
                 "$COM_USUARIO INTEGER NOT NULL REFERENCES $TABLA_USUARIOS($USU_ID), " +
                 "$COM_TITULO TEXT NOT NULL, " +
                 "$COM_SUBTITULO TEXT NOT NULL, " +
                 "$COM_MONTO REAL NOT NULL, " +
                 "$COM_VENCIMIENTO TEXT NOT NULL, " +
                 "$COM_ESTADO TEXT NOT NULL, " +
-                "$COM_EMPRESA TEXT NOT NULL)"
+                "$COM_EMPRESA TEXT NOT NULL, " +
+                "$COM_CONCEPTO TEXT NOT NULL DEFAULT '', " +
+                "$COM_RECARGO INTEGER NOT NULL DEFAULT 0)"
+
+        private const val SQL_CREAR_PAGOS =
+            "CREATE TABLE $TABLA_PAGOS (" +
+                "$PAG_ID INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "$PAG_COMPROBANTE TEXT NOT NULL UNIQUE, " +
+                "$PAG_FOLIO TEXT NOT NULL REFERENCES $TABLA_COMPROMISOS($COM_FOLIO), " +
+                "$PAG_EMPRESA TEXT NOT NULL, " +
+                "$PAG_CONCEPTO TEXT NOT NULL, " +
+                "$PAG_MONTO INTEGER NOT NULL, " +
+                "$PAG_FECHA TEXT NOT NULL, " +
+                "$PAG_CANAL TEXT NOT NULL, " +
+                "$PAG_MEDIO TEXT NOT NULL)"
+
+        private const val SQL_PROTEGER_PAGOS_UPDATE =
+            "CREATE TRIGGER IF NOT EXISTS pagos_sin_modificacion " +
+                "BEFORE UPDATE ON $TABLA_PAGOS BEGIN SELECT RAISE(ABORT, 'El comprobante es inmutable'); END"
+
+        private const val SQL_PROTEGER_PAGOS_DELETE =
+            "CREATE TRIGGER IF NOT EXISTS pagos_sin_eliminacion " +
+                "BEFORE DELETE ON $TABLA_PAGOS BEGIN SELECT RAISE(ABORT, 'El comprobante es inmutable'); END"
 
         private const val SQL_CREAR_REPORTES =
             "CREATE TABLE $TABLA_REPORTES (" +
@@ -114,9 +170,9 @@ class UsuarioDbHelper(context: Context) :
                 "(1, 'Usuario'), (2, 'Agente PagoFlex'), (3, 'Ejecutivo Empresa')"
 
         private const val SQL_PRECARGAR_USUARIOS =
-            "INSERT INTO $TABLA_USUARIOS ($USU_NOMBRE, $USU_CORREO, $USU_CONTRASENA, $USU_CIUDAD, $USU_ROL) VALUES " +
-                "('Carla Agente', 'carla@pagoflex.cl', '123456', 'Santiago', 2), " +
-                "('Daniela Ejecutivo', 'daniela@empresa.cl', '123456', 'Santiago', 3)"
+            "INSERT INTO $TABLA_USUARIOS ($USU_RUT, $USU_NOMBRE, $USU_CORREO, $USU_CONTRASENA, $USU_CIUDAD, $USU_ROL) VALUES " +
+                "('10.625.244-K', 'Carla Agente', 'carla@pagoflex.cl', '123456', 'Santiago', 2), " +
+                "('9.742.142-2', 'Daniela Ejecutivo', 'daniela@empresa.cl', '123456', 'Santiago', 3)"
 
         private const val SQL_PRECARGAR_REPORTES =
             "INSERT INTO $TABLA_REPORTES ($REP_CODIGO, $REP_TITULO, $REP_CLIENTE, $REP_ESTADO, $REP_FECHA, $REP_DESCRIPCION, $REP_TIPO) VALUES " +
@@ -147,7 +203,11 @@ class UsuarioDbHelper(context: Context) :
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(SQL_CREAR_ROLES)
         db.execSQL(SQL_CREAR_USUARIOS)
+        db.execSQL(SQL_CREAR_SERVICIOS)
         db.execSQL(SQL_CREAR_COMPROMISOS)
+        db.execSQL(SQL_CREAR_PAGOS)
+        db.execSQL(SQL_PROTEGER_PAGOS_UPDATE)
+        db.execSQL(SQL_PROTEGER_PAGOS_DELETE)
         db.execSQL(SQL_CREAR_REPORTES)
         db.execSQL(SQL_CREAR_COBRANZAS)
 
@@ -158,10 +218,13 @@ class UsuarioDbHelper(context: Context) :
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        if (oldVersion < 4) {
-            try {
-                db.execSQL(SQL_AGREGAR_AVATAR)
-            } catch (e: Exception) {}
+        if (oldVersion < 5) {
+            db.execSQL("DROP TABLE IF EXISTS $TABLA_SERVICIOS")
+            db.execSQL("DROP TABLE IF EXISTS $TABLA_PAGOS")
+            db.execSQL(SQL_CREAR_SERVICIOS)
+            db.execSQL(SQL_CREAR_PAGOS)
+            db.execSQL(SQL_PROTEGER_PAGOS_UPDATE)
+            db.execSQL(SQL_PROTEGER_PAGOS_DELETE)
         }
     }
 
@@ -185,6 +248,7 @@ class UsuarioDbHelper(context: Context) :
     fun insertarUsuario(usuario: Usuario): Long {
         val db = writableDatabase
         val id = db.insert(TABLA_USUARIOS, null, ContentValues().apply {
+            put(USU_RUT, usuario.rut)
             put(USU_NOMBRE, usuario.nombre)
             put(USU_CORREO, usuario.correo)
             put(USU_CONTRASENA, usuario.contrasena)
@@ -193,13 +257,17 @@ class UsuarioDbHelper(context: Context) :
         })
         if (id > 0 && usuario.idRol == 1L) {
             db.execSQL(
-                "INSERT INTO $TABLA_COMPROMISOS ($COM_USUARIO, $COM_TITULO, $COM_SUBTITULO, $COM_MONTO, $COM_VENCIMIENTO, $COM_ESTADO, $COM_EMPRESA) VALUES " +
-                    "(?, 'Universidad', 'Instituto Profesional', 35000.0, '15 de octubre de 2026', 'Pendiente', 'Universidad'), " +
-                    "(?, 'Luz', 'Servicio eléctrico', 28000.0, '20 oct. 2026', 'Pendiente', 'Luz'), " +
-                    "(?, 'Condominio', 'Gastos comunes', 15000.0, '28 oct. 2026', 'Pendiente', 'Condominio'), " +
-                    "(?, 'Agua', 'Servicio sanitario', 35000.0, '29 oct. 2026', 'Pagada', 'Agua'), " +
-                    "(?, 'Internet', 'Fibra óptica', 23000.0, '30 oct. 2026', 'Pendiente', 'Internet')",
+                "INSERT INTO $TABLA_COMPROMISOS ($COM_FOLIO, $COM_USUARIO, $COM_TITULO, $COM_SUBTITULO, $COM_MONTO, $COM_VENCIMIENTO, $COM_ESTADO, $COM_EMPRESA, $COM_CONCEPTO) VALUES " +
+                    "('PF-UNI-$id', ?, 'Universidad', 'Instituto Profesional', 35000.0, '15 de octubre de 2026', 'Pendiente', 'Universidad', 'Mensualidad'), " +
+                    "('PF-LUZ-$id', ?, 'Luz', 'Servicio eléctrico', 28000.0, '20 oct. 2026', 'Pendiente', 'Enel', 'Luz'), " +
+                    "('PF-COND-$id', ?, 'Condominio', 'Gastos comunes', 15000.0, '28 oct. 2026', 'Pendiente', 'Condominio', 'Gasto común'), " +
+                    "('PF-AGUA-$id', ?, 'Agua', 'Servicio sanitario', 35000.0, '29 oct. 2026', 'Pagada', 'Aguas Andinas', 'Agua'), " +
+                    "('PF-NET-$id', ?, 'Internet', 'Fibra óptica', 23000.0, '30 oct. 2026', 'Pendiente', 'Internet', 'Telefonía')",
                 arrayOf(id, id, id, id, id)
+            )
+            db.execSQL(
+                "INSERT INTO $TABLA_SERVICIOS ($SER_USUARIO, $SER_EMPRESA, $SER_RUT_PAGADOR, $SER_ALIAS) VALUES (?, 'Enel', ?, 'Cuenta de luz')",
+                arrayOf(id, usuario.rut)
             )
         }
         return id
@@ -209,6 +277,9 @@ class UsuarioDbHelper(context: Context) :
         val sql = "$SQL_SELECT_USUARIOS WHERE u.$USU_CORREO = ? AND u.$USU_CONTRASENA = ?"
         return consultarUsuarios(sql, arrayOf(correo, contrasena)).firstOrNull()
     }
+
+    fun buscarUsuarioPorRut(rut: String): Usuario? =
+        consultarUsuarios("$SQL_SELECT_USUARIOS WHERE u.$USU_RUT = ?", arrayOf(rut)).firstOrNull()
 
     fun listarUsuarios(): List<Usuario> =
         consultarUsuarios("$SQL_SELECT_USUARIOS ORDER BY u.$USU_NOMBRE", null)
@@ -221,6 +292,7 @@ class UsuarioDbHelper(context: Context) :
         writableDatabase.update(
             TABLA_USUARIOS,
             ContentValues().apply {
+                put(USU_RUT, usuario.rut)
                 put(USU_NOMBRE, usuario.nombre)
                 put(USU_CORREO, usuario.correo)
                 put(USU_CIUDAD, usuario.ciudad)
@@ -237,6 +309,36 @@ class UsuarioDbHelper(context: Context) :
 
     fun eliminarUsuario(id: Long): Int =
         writableDatabase.delete(TABLA_USUARIOS, "$USU_ID = ?", arrayOf(id.toString()))
+
+    // ----------------- SERVICIOS -----------------
+    fun insertarServicio(servicio: Servicio): Long =
+        writableDatabase.insert(TABLA_SERVICIOS, null, ContentValues().apply {
+            put(SER_USUARIO, servicio.usuarioId)
+            put(SER_EMPRESA, servicio.nombreEmpresa)
+            put(SER_RUT_PAGADOR, servicio.rutPagador)
+            put(SER_ALIAS, servicio.alias)
+        })
+
+    fun listarServicios(idUsuario: Long): List<Servicio> {
+        val lista = mutableListOf<Servicio>()
+        readableDatabase.rawQuery(
+            "SELECT * FROM $TABLA_SERVICIOS WHERE $SER_USUARIO = ?",
+            arrayOf(idUsuario.toString())
+        ).use { c ->
+            while (c.moveToNext()) {
+                lista.add(
+                    Servicio(
+                        id = c.getLong(c.getColumnIndexOrThrow(SER_ID)),
+                        usuarioId = c.getLong(c.getColumnIndexOrThrow(SER_USUARIO)),
+                        nombreEmpresa = c.getString(c.getColumnIndexOrThrow(SER_EMPRESA)),
+                        rutPagador = c.getString(c.getColumnIndexOrThrow(SER_RUT_PAGADOR)),
+                        alias = c.getString(c.getColumnIndexOrThrow(SER_ALIAS))
+                    )
+                )
+            }
+        }
+        return lista
+    }
 
     // ----------------- COMPROMISOS -----------------
     fun listarCompromisos(idUsuario: Long): List<Compromiso> {
@@ -255,7 +357,10 @@ class UsuarioDbHelper(context: Context) :
                         monto = c.getDouble(c.getColumnIndexOrThrow(COM_MONTO)),
                         fechaVencimiento = c.getString(c.getColumnIndexOrThrow(COM_VENCIMIENTO)),
                         estado = c.getString(c.getColumnIndexOrThrow(COM_ESTADO)),
-                        empresa = c.getString(c.getColumnIndexOrThrow(COM_EMPRESA))
+                        empresa = c.getString(c.getColumnIndexOrThrow(COM_EMPRESA)),
+                        folio = c.getString(c.getColumnIndexOrThrow(COM_FOLIO)),
+                        concepto = c.getString(c.getColumnIndexOrThrow(COM_CONCEPTO)),
+                        recargo = c.getInt(c.getColumnIndexOrThrow(COM_RECARGO))
                     )
                 )
             }
@@ -265,6 +370,115 @@ class UsuarioDbHelper(context: Context) :
 
     fun pagarCompromiso(id: Long) {
         writableDatabase.execSQL("UPDATE $TABLA_COMPROMISOS SET $COM_ESTADO = 'Pagada' WHERE $COM_ID = ?", arrayOf(id.toString()))
+    }
+
+    fun marcarCompromisoEnRevision(folio: String): Boolean {
+        val db = writableDatabase
+        val cv = ContentValues().apply { put(COM_ESTADO, "En revisión") }
+        val filas = db.update(TABLA_COMPROMISOS, cv, "$COM_FOLIO = ?", arrayOf(folio))
+        return filas > 0
+    }
+
+    fun confirmarPago(folio: String, medioPago: String = "Pago simulado"): Comprobante? {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            var cTarget: Compromiso? = null
+            readableDatabase.rawQuery("SELECT * FROM $TABLA_COMPROMISOS WHERE $COM_FOLIO = ?", arrayOf(folio)).use { cursor ->
+                if (cursor.moveToFirst()) {
+                    cTarget = Compromiso(
+                        id = cursor.getLong(cursor.getColumnIndexOrThrow(COM_ID)),
+                        usuarioId = cursor.getLong(cursor.getColumnIndexOrThrow(COM_USUARIO)),
+                        titulo = cursor.getString(cursor.getColumnIndexOrThrow(COM_TITULO)),
+                        subtitulo = cursor.getString(cursor.getColumnIndexOrThrow(COM_SUBTITULO)),
+                        monto = cursor.getDouble(cursor.getColumnIndexOrThrow(COM_MONTO)),
+                        fechaVencimiento = cursor.getString(cursor.getColumnIndexOrThrow(COM_VENCIMIENTO)),
+                        estado = cursor.getString(cursor.getColumnIndexOrThrow(COM_ESTADO)),
+                        empresa = cursor.getString(cursor.getColumnIndexOrThrow(COM_EMPRESA)),
+                        folio = cursor.getString(cursor.getColumnIndexOrThrow(COM_FOLIO)),
+                        concepto = cursor.getString(cursor.getColumnIndexOrThrow(COM_CONCEPTO)),
+                        recargo = cursor.getInt(cursor.getColumnIndexOrThrow(COM_RECARGO))
+                    )
+                }
+            }
+
+            val comp = cTarget ?: return null
+
+            val numComprobante = "C-${System.currentTimeMillis().toString().takeLast(8)}"
+            val fechaActual = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
+
+            val cvPago = ContentValues().apply {
+                put(PAG_COMPROBANTE, numComprobante)
+                put(PAG_FOLIO, folio)
+                put(PAG_EMPRESA, comp.empresa.ifBlank { comp.titulo })
+                put(PAG_CONCEPTO, comp.concepto.ifBlank { comp.subtitulo })
+                put(PAG_MONTO, comp.monto.toInt())
+                put(PAG_FECHA, fechaActual)
+                put(PAG_CANAL, "App PagoFlex")
+                put(PAG_MEDIO, medioPago)
+            }
+
+            val idPago = db.insert(TABLA_PAGOS, null, cvPago)
+            if (idPago == -1L) return null
+
+            val cvComp = ContentValues().apply { put(COM_ESTADO, "Pagada") }
+            db.update(TABLA_COMPROMISOS, cvComp, "$COM_FOLIO = ?", arrayOf(folio))
+
+            db.setTransactionSuccessful()
+
+            return Comprobante(
+                numero = numComprobante,
+                folioCompromiso = folio,
+                empresa = comp.empresa.ifBlank { comp.titulo },
+                concepto = comp.concepto.ifBlank { comp.subtitulo },
+                montoPagado = comp.monto.toInt(),
+                fechaHora = fechaActual,
+                canal = "App PagoFlex",
+                medioPago = medioPago
+            )
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    fun listarComprobantes(usuarioId: Long): List<Comprobante> {
+        val lista = mutableListOf<Comprobante>()
+        val sql = "SELECT p.* FROM $TABLA_PAGOS p INNER JOIN $TABLA_COMPROMISOS c ON p.$PAG_FOLIO = c.$COM_FOLIO WHERE c.$COM_USUARIO = ?"
+        readableDatabase.rawQuery(sql, arrayOf(usuarioId.toString())).use { cursor ->
+            while (cursor.moveToNext()) {
+                lista.add(
+                    Comprobante(
+                        numero = cursor.getString(cursor.getColumnIndexOrThrow(PAG_COMPROBANTE)),
+                        folioCompromiso = cursor.getString(cursor.getColumnIndexOrThrow(PAG_FOLIO)),
+                        empresa = cursor.getString(cursor.getColumnIndexOrThrow(PAG_EMPRESA)),
+                        concepto = cursor.getString(cursor.getColumnIndexOrThrow(PAG_CONCEPTO)),
+                        montoPagado = cursor.getInt(cursor.getColumnIndexOrThrow(PAG_MONTO)),
+                        fechaHora = cursor.getString(cursor.getColumnIndexOrThrow(PAG_FECHA)),
+                        canal = cursor.getString(cursor.getColumnIndexOrThrow(PAG_CANAL)),
+                        medioPago = cursor.getString(cursor.getColumnIndexOrThrow(PAG_MEDIO))
+                    )
+                )
+            }
+        }
+        return lista
+    }
+
+    fun buscarComprobante(folio: String): Comprobante? {
+        readableDatabase.rawQuery("SELECT * FROM $TABLA_PAGOS WHERE $PAG_FOLIO = ?", arrayOf(folio)).use { cursor ->
+            if (cursor.moveToFirst()) {
+                return Comprobante(
+                    numero = cursor.getString(cursor.getColumnIndexOrThrow(PAG_COMPROBANTE)),
+                    folioCompromiso = cursor.getString(cursor.getColumnIndexOrThrow(PAG_FOLIO)),
+                    empresa = cursor.getString(cursor.getColumnIndexOrThrow(PAG_EMPRESA)),
+                    concepto = cursor.getString(cursor.getColumnIndexOrThrow(PAG_CONCEPTO)),
+                    montoPagado = cursor.getInt(cursor.getColumnIndexOrThrow(PAG_MONTO)),
+                    fechaHora = cursor.getString(cursor.getColumnIndexOrThrow(PAG_FECHA)),
+                    canal = cursor.getString(cursor.getColumnIndexOrThrow(PAG_CANAL)),
+                    medioPago = cursor.getString(cursor.getColumnIndexOrThrow(PAG_MEDIO))
+                )
+            }
+        }
+        return null
     }
 
     // ----------------- REPORTES / RECOMENDACIONES (Agente) -----------------
@@ -344,6 +558,9 @@ class UsuarioDbHelper(context: Context) :
                         nombreRol = cursor.getString(cursor.getColumnIndexOrThrow(ROL_NOMBRE)),
                         avatar = cursor.getColumnIndexOrThrow(USU_AVATAR).let { columna ->
                             if (cursor.isNull(columna)) null else cursor.getBlob(columna)
+                        },
+                        rut = cursor.getColumnIndex(USU_RUT).let { col ->
+                            if (col >= 0 && !cursor.isNull(col)) cursor.getString(col) else "12.345.678-9"
                         }
                     )
                 )

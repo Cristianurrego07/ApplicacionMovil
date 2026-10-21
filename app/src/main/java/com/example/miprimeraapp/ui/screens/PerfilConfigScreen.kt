@@ -9,7 +9,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CreditCard
@@ -24,6 +27,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.miprimeraapp.R
 import com.example.miprimeraapp.data.ConvertidorImagen
@@ -177,7 +181,12 @@ fun PerfilConfigScreen(
             onDismissRequest = { mostrarDialogoPago = false },
             title = { Text("Agregar Método de Pago") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(
+                    modifier = Modifier
+                        .verticalScroll(rememberScrollState())
+                        .imePadding(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     Text("Selecciona el tipo de tarjeta y los datos:")
 
                     ExposedDropdownMenuBox(
@@ -221,6 +230,7 @@ fun PerfilConfigScreen(
                         value = numeroInput,
                         onValueChange = { numeroInput = it },
                         label = { Text("Últimos 4 dígitos (ej. 9876)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -253,6 +263,8 @@ fun PerfilConfigScreen(
             }
         )
     }
+
+    val scrollState = rememberScrollState()
 
     Scaffold(
         topBar = {
@@ -288,6 +300,8 @@ fun PerfilConfigScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .verticalScroll(scrollState)
+                .imePadding()
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -426,7 +440,7 @@ fun PerfilConfigScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Button(
                 onClick = onCerrarSesion,
@@ -437,6 +451,8 @@ fun PerfilConfigScreen(
             ) {
                 Text("Cerrar Sesión", style = MaterialTheme.typography.titleMedium)
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }

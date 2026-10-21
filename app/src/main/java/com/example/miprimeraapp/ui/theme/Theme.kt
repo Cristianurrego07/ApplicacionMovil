@@ -10,8 +10,8 @@ import androidx.compose.ui.unit.dp
 private val EsquemaClaro = lightColorScheme(
     primary = PrimarioClaroModo,
     onPrimary = Blanco,
-    primaryContainer = Color(0xFFEDE9FE),
-    onPrimaryContainer = Color(0xFF5B21B6),
+    primaryContainer = Color(0xFFD1FAE5),
+    onPrimaryContainer = Color(0xFF065F46),
     secondary = Secundario,
     onSecondary = Blanco,
     tertiary = Acento,
@@ -20,15 +20,15 @@ private val EsquemaClaro = lightColorScheme(
     onBackground = TextoClaroModo,
     surface = SuperficieClaraModo,
     onSurface = TextoClaroModo,
-    surfaceVariant = Color(0xFFF1F5F9),
-    onSurfaceVariant = Color(0xFF64748B)
+    surfaceVariant = Color(0xFFECFDF5),
+    onSurfaceVariant = Color(0xFF047857)
 )
 
 private val EsquemaOscuro = darkColorScheme(
-    primary = PagoFlexPurple,
+    primary = PagoFlexGreen,
     onPrimary = Blanco,
-    primaryContainer = PrimarioOscuroModo,
-    onPrimaryContainer = Color(0xFFEDE9FE),
+    primaryContainer = Color(0xFF064E3B),
+    onPrimaryContainer = Color(0xFFD1FAE5),
     secondary = Secundario,
     onSecondary = Blanco,
     tertiary = Acento,
@@ -37,8 +37,8 @@ private val EsquemaOscuro = darkColorScheme(
     onBackground = TextoOscuroModo,
     surface = SuperficieOscuraModo,
     onSurface = TextoOscuroModo,
-    surfaceVariant = Color(0xFF242038),
-    onSurfaceVariant = Color(0xFF9CA3AF)
+    surfaceVariant = Color(0xFF1E2E28),
+    onSurfaceVariant = Color(0xFFA7F3D0)
 )
 
 private val Formas = Shapes(

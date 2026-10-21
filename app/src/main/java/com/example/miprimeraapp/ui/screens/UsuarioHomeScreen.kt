@@ -3,6 +3,7 @@ package com.example.miprimeraapp.ui.screens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -14,6 +15,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.miprimeraapp.R
 import com.example.miprimeraapp.model.Compromiso
+import com.example.miprimeraapp.model.Servicio
 import com.example.miprimeraapp.model.Usuario
 import com.example.miprimeraapp.ui.theme.PagoFlexPurple
 import com.example.miprimeraapp.viewmodel.PagoFlexViewModel
@@ -24,6 +26,8 @@ import kotlinx.coroutines.launch
 fun UsuarioHomeScreen(
     usuario: Usuario?,
     onNavigateDetalle: (Long) -> Unit,
+    onNavigateAgregarServicio: () -> Unit = {},
+    onNavigateReportarProblema: () -> Unit = {},
     onNavigateHistorial: () -> Unit,
     onNavigateProgreso: () -> Unit,
     onNavigatePerfil: () -> Unit,
@@ -32,16 +36,18 @@ fun UsuarioHomeScreen(
 ) {
     val usuarioId = usuario?.id ?: 1L
     val compromisos by viewModel.compromisos.collectAsStateWithLifecycle()
+    val servicios by viewModel.servicios.collectAsStateWithLifecycle()
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(usuarioId) {
         viewModel.cargarCompromisos(usuarioId)
+        viewModel.cargarServicios(usuarioId)
     }
 
     val totalPendiente = compromisos
-        .filter { it.estado.equals("Pendiente", ignoreCase = true) }
+        .filter { it.estado.equals("Pendiente", ignoreCase = true) || it.estado.equals("Vencido", ignoreCase = true) }
         .sumOf { it.monto }
 
     ModalNavigationDrawer(
@@ -67,6 +73,15 @@ fun UsuarioHomeScreen(
                     colors = NavigationDrawerItemDefaults.colors(selectedContainerColor = PagoFlexPurple.copy(alpha = 0.2f))
                 )
                 NavigationDrawerItem(
+                    label = { Text("Inscribir Servicio") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onNavigateAgregarServicio()
+                    },
+                    icon = { Icon(painterResource(R.drawable.ic_buscar), contentDescription = null) }
+                )
+                NavigationDrawerItem(
                     label = { Text("Historial de Pagos") },
                     selected = false,
                     onClick = {
@@ -74,6 +89,15 @@ fun UsuarioHomeScreen(
                         onNavigateHistorial()
                     },
                     icon = { Icon(painterResource(R.drawable.ic_buscar), contentDescription = null) }
+                )
+                NavigationDrawerItem(
+                    label = { Text("Reportar Problema") },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onNavigateReportarProblema()
+                    },
+                    icon = { Icon(painterResource(R.drawable.ic_candado), contentDescription = null) }
                 )
                 NavigationDrawerItem(
                     label = { Text("Mi Progreso") },
@@ -116,7 +140,7 @@ fun UsuarioHomeScreen(
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_menu),
-                                contentDescription = "Menú de navegación (3 líneas)"
+                                contentDescription = "Menú de navegación"
                             )
                         }
                     },
@@ -134,6 +158,7 @@ fun UsuarioHomeScreen(
                     .padding(innerPadding)
                     .padding(16.dp)
             ) {
+                // Tarjeta Resumen Total
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -156,15 +181,67 @@ fun UsuarioHomeScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
+                // Sección: Mis Servicios Inscritos
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Mis Servicios Inscritos",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    TextButton(onClick = onNavigateAgregarServicio) {
+                        Text("+ Inscribir", color = PagoFlexPurple)
+                    }
+                }
+
+                if (servicios.isEmpty()) {
+                    Text(
+                        text = "Aún no has inscrito servicios. Presiona '+ Inscribir' para agregar tus cuentas.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                } else {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                    ) {
+                        items(servicios) { servicio ->
+                            FilterChip(
+                                selected = true,
+                                onClick = { },
+                                label = { Text("${servicio.alias.ifBlank { servicio.nombreEmpresa }} (${servicio.nombreEmpresa})") },
+                                leadingIcon = {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_check),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = PagoFlexPurple.copy(alpha = 0.15f),
+                                    selectedLabelColor = PagoFlexPurple
+                                )
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Sección: Próximos Compromisos
                 Text(
-                    text = "Próximos Compromisos",
+                    text = "Próximos Compromisos por Pagar",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onBackground
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
