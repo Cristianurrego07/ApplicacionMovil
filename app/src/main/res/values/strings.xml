@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">MiPrimeraApp</string>
+    <string name="app_name">Pago Flex</string>
     <string name="cd_ocultar_contrasena">Ocultar contraseña</string>
     <string name="cd_mostrar_contrasena">Mostrar contraseña</string>
     <string name="cd_volver">Volver</string>
@@ -24,4 +24,31 @@
     <string name="btn_camara">Cámara</string>
     <string name="btn_galeria">Galería</string>
     <string name="cd_avatar">Avatar de usuario</string>
+
+    <!-- Strings para pantallas secundarias -->
+    <string name="titulo_editar">Editar perfil</string>
+    <string name="menu_mi_perfil">Mi Perfil</string>
+    <string name="menu_ver_usuarios">Ver Usuarios</string>
+    <string name="titulo_formulario">Formulario</string>
+    <string name="cd_menu">Menú</string>
+    <string name="cd_banner">Banner</string>
+    <string name="banner_titulo">Bienvenido a Pago Flex</string>
+    <string name="banner_subtitulo">Gestiona tus pagos de manera fácil y rápida</string>
+    <string name="seccion_datos">Datos Personales</string>
+    <string name="seccion_preferencias">Preferencias</string>
+    <string name="etiqueta_nivel">Nivel de experiencia</string>
+    <string name="opcion_noticias">Recibir novedades y promociones</string>
+    <string name="opcion_terminos">Acepto los términos y condiciones</string>
+    <string name="btn_limpiar">Limpiar</string>
+    <string name="registro_exitoso">Registro guardado con éxito</string>
+    <string name="seccion_sobre_mi">Sobre mí</string>
+    <string name="seccion_intereses">Intereses</string>
+    <string name="cd_portada">Imagen de portada</string>
+    <string name="dialogo_eliminar_titulo">¿Eliminar registro?</string>
+    <string name="dialogo_eliminar_mensaje">Esta acción no se puede deshacer.</string>
+    <string name="btn_eliminar">Eliminar</string>
+    <string name="titulo_usuarios">Lista de Usuarios</string>
+    <string name="campo_buscar">Buscar usuario&#8230;</string>
+    <string name="lista_vacia">No se encontraron resultados</string>
+    <string name="cd_eliminar">Eliminar usuario</string>
 </resources>

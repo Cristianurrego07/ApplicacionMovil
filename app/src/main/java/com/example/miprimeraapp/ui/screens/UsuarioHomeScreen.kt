@@ -5,8 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -150,15 +148,6 @@ fun UsuarioHomeScreen(
                         containerColor = MaterialTheme.colorScheme.surface,
                         titleContentColor = MaterialTheme.colorScheme.onSurface
                     )
-                )
-            },
-            floatingActionButton = {
-                ExtendedFloatingActionButton(
-                    onClick = onNavigateAgregarServicio,
-                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                    text = { Text("Inscribir Servicio") },
-                    containerColor = PagoFlexPurple,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             },
             containerColor = MaterialTheme.colorScheme.background
