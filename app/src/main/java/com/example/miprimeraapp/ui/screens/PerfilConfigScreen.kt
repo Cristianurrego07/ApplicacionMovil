@@ -14,10 +14,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CreditCard
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,10 +24,12 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.miprimeraapp.R
 import com.example.miprimeraapp.data.ConvertidorImagen
+import com.example.miprimeraapp.data.CorreoNotificador
 import com.example.miprimeraapp.data.UsuarioDbHelper
 import com.example.miprimeraapp.model.Usuario
 import com.example.miprimeraapp.permisos.Permisos
@@ -58,6 +57,24 @@ fun PerfilConfigScreen(
     val db = remember { UsuarioDbHelper(context) }
 
     var usuarioActual by remember { mutableStateOf(usuario) }
+    var modoEdicion by remember { mutableStateOf(false) }
+
+    // Campos del perfil
+    var editNombre by remember(usuarioActual) { mutableStateOf(usuarioActual?.nombre ?: "") }
+    var editApellido by remember(usuarioActual) { mutableStateOf(usuarioActual?.apellido ?: "") }
+    var editRut by remember(usuarioActual) { mutableStateOf(usuarioActual?.rut ?: "") }
+    var editCorreo by remember(usuarioActual) { mutableStateOf(usuarioActual?.correo ?: "") }
+    var editTelefono by remember(usuarioActual) { mutableStateOf(usuarioActual?.telefono ?: "") }
+    var editDireccion by remember(usuarioActual) { mutableStateOf(usuarioActual?.direccion ?: "") }
+    var editCiudad by remember(usuarioActual) { mutableStateOf(usuarioActual?.ciudad ?: "") }
+
+    // Cambiar clave
+    var mostrarDialogoClave by remember { mutableStateOf(false) }
+    var claveActualInput by remember { mutableStateOf("") }
+    var claveNuevaInput by remember { mutableStateOf("") }
+    var claveConfirmarInput by remember { mutableStateOf("") }
+    var errorClave by remember { mutableStateOf<String?>(null) }
+
     var mostrarDialogoFoto by remember { mutableStateOf(false) }
 
     val textoCamaraDenegada = stringResource(R.string.permiso_camara_denegado)
@@ -82,6 +99,9 @@ fun PerfilConfigScreen(
             val bytes = ConvertidorImagen.aBytes(fotoBitmap)
             db.actualizarAvatar(usuarioActual!!.id, bytes)
             usuarioActual = db.buscarPorId(usuarioActual!!.id)
+            scope.launch {
+                snackbarHostState.showSnackbar("¡Imagen de perfil guardada exitosamente en la Base de Datos!")
+            }
         }
     }
 
@@ -105,6 +125,9 @@ fun PerfilConfigScreen(
                 val bytes = ConvertidorImagen.aBytes(bitmap)
                 db.actualizarAvatar(usuarioActual!!.id, bytes)
                 usuarioActual = db.buscarPorId(usuarioActual!!.id)
+                scope.launch {
+                    snackbarHostState.showSnackbar("¡Imagen de perfil guardada exitosamente en la Base de Datos!")
+                }
             }
         }
     }
@@ -171,6 +194,102 @@ fun PerfilConfigScreen(
                     }
                 }) {
                     Text(stringResource(R.string.btn_galeria))
+                }
+            }
+        )
+    }
+
+    if (mostrarDialogoClave) {
+        AlertDialog(
+            onDismissRequest = {
+                mostrarDialogoClave = false
+                claveActualInput = ""
+                claveNuevaInput = ""
+                claveConfirmarInput = ""
+                errorClave = null
+            },
+            title = { Text("Cambiar Contraseña") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Ingresa tu contraseña actual y la nueva contraseña para actualizarla:")
+
+                    OutlinedTextField(
+                        value = claveActualInput,
+                        onValueChange = { claveActualInput = it },
+                        label = { Text("Contraseña Actual") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = claveNuevaInput,
+                        onValueChange = { claveNuevaInput = it },
+                        label = { Text("Nueva Contraseña") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = claveConfirmarInput,
+                        onValueChange = { claveConfirmarInput = it },
+                        label = { Text("Confirmar Nueva Contraseña") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    errorClave?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val u = usuarioActual
+                        if (u != null) {
+                            if (claveActualInput != u.contrasena) {
+                                errorClave = "La contraseña actual no es correcta."
+                            } else if (claveNuevaInput.length < 4) {
+                                errorClave = "La nueva contraseña debe tener al menos 4 caracteres."
+                            } else if (claveNuevaInput != claveConfirmarInput) {
+                                errorClave = "Las contraseñas no coinciden."
+                            } else {
+                                val exito = db.actualizarContrasena(u.id, claveNuevaInput)
+                                if (exito) {
+                                    usuarioActual = db.buscarPorId(u.id)
+                                    mostrarDialogoClave = false
+                                    claveActualInput = ""
+                                    claveNuevaInput = ""
+                                    claveConfirmarInput = ""
+                                    errorClave = null
+
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("¡Contraseña actualizada con éxito en la Base de Datos!")
+                                    }
+
+                                    CorreoNotificador.enviarCorreo(
+                                        context = context,
+                                        destinatario = u.correo,
+                                        asunto = "Seguridad PagoFlex - Cambio de Contraseña",
+                                        cuerpo = "Hola ${u.nombre},\n\nTe informamos que tu contraseña ha sido modificada exitosamente en PagoFlex.\n\nAtentamente,\nEquipo PagoFlex"
+                                    )
+                                } else {
+                                    errorClave = "No se pudo actualizar la contraseña."
+                                }
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = PagoFlexPurple)
+                ) {
+                    Text("Guardar Contraseña")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    mostrarDialogoClave = false
+                    errorClave = null
+                }) {
+                    Text("Cancelar")
                 }
             }
         )
@@ -316,7 +435,7 @@ fun PerfilConfigScreen(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(80.dp)
+                            .size(90.dp)
                             .clip(CircleShape)
                             .background(PagoFlexPurple.copy(alpha = 0.2f))
                             .clickable { mostrarDialogoFoto = true },
@@ -329,23 +448,155 @@ fun PerfilConfigScreen(
                         )
                     }
                     Text(
-                        text = stringResource(R.string.texto_cambiar_foto),
+                        text = "📷 Cambiar foto de perfil (se guarda en BD)",
                         style = MaterialTheme.typography.bodySmall,
                         color = PagoFlexPurple,
+                        fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.clickable { mostrarDialogoFoto = true }
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
 
-                    Column(
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        ProfileInfoRow(label = "Nombre", value = usuarioActual?.nombre ?: "Usuario")
-                        ProfileInfoRow(label = "Correo", value = usuarioActual?.correo ?: "")
-                        ProfileInfoRow(label = "Ciudad", value = usuarioActual?.ciudad ?: "Santiago")
-                        ProfileInfoRow(label = "Rol", value = usuarioActual?.nombreRol ?: "Usuario")
+                        Text(
+                            text = "Información de Perfil (${usuarioActual?.nombreRol ?: "Usuario"})",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        IconButton(onClick = { modoEdicion = !modoEdicion }) {
+                            Icon(
+                                imageVector = if (modoEdicion) Icons.Default.Close else Icons.Default.Edit,
+                                contentDescription = "Editar perfil",
+                                tint = PagoFlexPurple
+                            )
+                        }
+                    }
+
+                    if (modoEdicion) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = editNombre,
+                                onValueChange = { editNombre = it },
+                                label = { Text("Nombre") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = editApellido,
+                                onValueChange = { editApellido = it },
+                                label = { Text("Apellido") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = editRut,
+                                onValueChange = { editRut = it },
+                                label = { Text("RUT") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = editCorreo,
+                                onValueChange = { editCorreo = it },
+                                label = { Text("Correo Electrónico") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = editTelefono,
+                                onValueChange = { editTelefono = it },
+                                label = { Text("Teléfono") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = editDireccion,
+                                onValueChange = { editDireccion = it },
+                                label = { Text("Dirección") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = editCiudad,
+                                onValueChange = { editCiudad = it },
+                                label = { Text("Ciudad") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            Button(
+                                onClick = {
+                                    val u = usuarioActual
+                                    if (u != null && editNombre.isNotBlank() && editCorreo.isNotBlank()) {
+                                        val actualizado = u.copy(
+                                            nombre = editNombre.trim(),
+                                            apellido = editApellido.trim(),
+                                            rut = editRut.trim(),
+                                            correo = editCorreo.trim(),
+                                            telefono = editTelefono.trim(),
+                                            direccion = editDireccion.trim(),
+                                            ciudad = editCiudad.trim()
+                                        )
+                                        val filas = db.actualizarUsuario(actualizado)
+                                        if (filas > 0) {
+                                            usuarioActual = db.buscarPorId(u.id)
+                                            modoEdicion = false
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("¡Perfil actualizado con éxito en la Base de Datos!")
+                                            }
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = PagoFlexPurple)
+                            ) {
+                                Text("Guardar Cambios")
+                            }
+                        }
+                    } else {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            ProfileInfoRow(label = "Nombre Completo", value = "${usuarioActual?.nombre ?: ""} ${usuarioActual?.apellido ?: ""}".trim())
+                            ProfileInfoRow(label = "RUT", value = usuarioActual?.rut ?: "12.345.678-9")
+                            ProfileInfoRow(label = "Correo", value = usuarioActual?.correo ?: "")
+                            ProfileInfoRow(label = "Teléfono", value = usuarioActual?.telefono ?: "")
+                            ProfileInfoRow(label = "Dirección", value = usuarioActual?.direccion ?: "")
+                            ProfileInfoRow(label = "Ciudad", value = usuarioActual?.ciudad ?: "Santiago")
+                            ProfileInfoRow(label = "Rol de Sistema", value = usuarioActual?.nombreRol ?: "Usuario")
+                        }
+                    }
+                }
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Lock, contentDescription = null, tint = PagoFlexPurple)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text("Seguridad y Contraseña", style = MaterialTheme.typography.titleMedium)
+                            Text("Cambia tu clave y recibe alertas", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    Button(
+                        onClick = { mostrarDialogoClave = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = PagoFlexPurple)
+                    ) {
+                        Text("Cambiar")
                     }
                 }
             }

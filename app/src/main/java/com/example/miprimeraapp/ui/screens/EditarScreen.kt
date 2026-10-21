@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -41,7 +43,11 @@ fun EditarScreen(
     onGuardar: (Usuario) -> Unit
 ) {
     var nombre by rememberSaveable { mutableStateOf(usuario.nombre) }
+    var apellido by rememberSaveable { mutableStateOf(usuario.apellido) }
+    var rut by rememberSaveable { mutableStateOf(usuario.rut) }
     var correo by rememberSaveable { mutableStateOf(usuario.correo) }
+    var telefono by rememberSaveable { mutableStateOf(usuario.telefono) }
+    var direccion by rememberSaveable { mutableStateOf(usuario.direccion) }
     var ciudad by rememberSaveable { mutableStateOf(usuario.ciudad) }
     var idRol by rememberSaveable { mutableStateOf(usuario.idRol) }
     var expandido by remember { mutableStateOf(false) }
@@ -58,7 +64,18 @@ fun EditarScreen(
                 actions = {
                     IconButton(
                         onClick = {
-                            onGuardar(usuario.copy(nombre = nombre, correo = correo, ciudad = ciudad, idRol = idRol))
+                            onGuardar(
+                                usuario.copy(
+                                    nombre = nombre,
+                                    apellido = apellido,
+                                    rut = rut,
+                                    correo = correo,
+                                    telefono = telefono,
+                                    direccion = direccion,
+                                    ciudad = ciudad,
+                                    idRol = idRol
+                                )
+                            )
                         },
                         enabled = nombre.isNotBlank()
                     ) {
@@ -71,6 +88,7 @@ fun EditarScreen(
         Column(
             modifier = Modifier
                 .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
                 .padding(Dimens.espacioPantalla),
             verticalArrangement = Arrangement.spacedBy(Dimens.espacioChico)
         ) {
@@ -81,11 +99,36 @@ fun EditarScreen(
                 icono = R.drawable.ic_persona
             )
             CampoTexto(
+                valor = apellido,
+                onValorCambia = { apellido = it },
+                etiqueta = "Apellido",
+                icono = R.drawable.ic_persona
+            )
+            CampoTexto(
+                valor = rut,
+                onValorCambia = { rut = it },
+                etiqueta = "RUT",
+                icono = R.drawable.ic_persona
+            )
+            CampoTexto(
                 valor = correo,
                 onValorCambia = { correo = it },
                 etiqueta = stringResource(R.string.campo_correo),
                 icono = R.drawable.ic_correo,
                 tipoTeclado = KeyboardType.Email
+            )
+            CampoTexto(
+                valor = telefono,
+                onValorCambia = { telefono = it },
+                etiqueta = "Teléfono",
+                icono = R.drawable.ic_buscar,
+                tipoTeclado = KeyboardType.Phone
+            )
+            CampoTexto(
+                valor = direccion,
+                onValorCambia = { direccion = it },
+                etiqueta = "Dirección",
+                icono = R.drawable.ic_ubicacion
             )
             CampoTexto(
                 valor = ciudad,
