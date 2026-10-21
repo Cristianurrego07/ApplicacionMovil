@@ -18,7 +18,7 @@ class PagoFlexDbHelper(context: Context) :
 
     companion object {
         private const val NOMBRE_BD = "PagoFlex.db"
-        private const val VERSION_BD = 13
+        private const val VERSION_BD = 14
         private const val TABLA_ROLES = "roles"
         private const val TABLA_USUARIOS = "usuarios"
         private const val TABLA_SERVICIOS = "servicios"
@@ -67,6 +67,9 @@ class PagoFlexDbHelper(context: Context) :
                     "$NOMBRE TEXT NOT NULL,"+
                     "$CORREO TEXT NOT NULL UNIQUE,"+
                     "$CONTRASENA TEXT NOT NULL,"+
+                    "telefono TEXT NOT NULL DEFAULT '',"+
+                    "direccion TEXT NOT NULL DEFAULT '',"+
+                    "ciudad TEXT NOT NULL DEFAULT '',"+
                     "$ID_ROL INTEGER NOT NULL REFERENCES $TABLA_ROLES($ID_ROL))"
 
         private const val SQL_CREAR_SERVICIOS =
@@ -212,6 +215,11 @@ class PagoFlexDbHelper(context: Context) :
         }
         if (oldVersion < 11) {
             db.execSQL(SQL_CREAR_REPORTES)
+        }
+        if (oldVersion < 14) {
+            db.execSQL("ALTER TABLE $TABLA_USUARIOS ADD COLUMN telefono TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE $TABLA_USUARIOS ADD COLUMN direccion TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE $TABLA_USUARIOS ADD COLUMN ciudad TEXT NOT NULL DEFAULT ''")
         }
         if (oldVersion < 13) {
             db.execSQL("DELETE FROM $TABLA_USUARIOS WHERE $CORREO = 'miranda@empresa.com'")
@@ -627,6 +635,9 @@ class PagoFlexDbHelper(context: Context) :
             put(NOMBRE, usuario.nombre)
             put(CORREO, usuario.correo)
             put(ID_ROL, usuario.rolId)
+            put("telefono", usuario.telefono)
+            put("direccion", usuario.direccion)
+            put("ciudad", usuario.ciudad)
     }
 
     private fun consultarUsuarios(sql: String, argumentos: Array<String>?): List<Usuario> {
@@ -646,7 +657,10 @@ class PagoFlexDbHelper(context: Context) :
             nombre = cursor.getString(cursor.getColumnIndexOrThrow(NOMBRE)),
             correo = cursor.getString(cursor.getColumnIndexOrThrow(CORREO)),
             rolId = cursor.getLong(cursor.getColumnIndexOrThrow(ID_ROL)),
-            rolNombre = cursor.getString(cursor.getColumnIndexOrThrow(NOMBRE_ROL))
+            rolNombre = cursor.getString(cursor.getColumnIndexOrThrow(NOMBRE_ROL)),
+            telefono = cursor.getString(cursor.getColumnIndexOrThrow("telefono")),
+            direccion = cursor.getString(cursor.getColumnIndexOrThrow("direccion")),
+            ciudad = cursor.getString(cursor.getColumnIndexOrThrow("ciudad"))
         )
     }
 }

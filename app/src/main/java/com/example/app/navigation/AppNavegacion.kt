@@ -177,7 +177,16 @@ fun AppNavegacion() {
                     onVolver = {
                         navController.navigateUp()
                     },
-                    reportes = reportes
+                    reportes = reportes,
+                    onGuardarPerfil = { actualizado ->
+                        val guardado = runCatching { dbHelper.actualizarUsuario(actualizado) == 1 }
+                            .getOrDefault(false)
+                        if (guardado) {
+                            pagoFlexViewModel.iniciarSesion(actualizado)
+                            cargarDatosUsuario(actualizado.id)
+                        }
+                        guardado
+                    }
                 )
             }
         }

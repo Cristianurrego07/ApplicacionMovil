@@ -7,5 +7,8 @@ data class Usuario(
     val nombre: String,
     val correo: String,
     val rolId: Long,
-    val rolNombre: String = ""
+    val rolNombre: String = "",
+    val telefono: String = "",
+    val direccion: String = "",
+    val ciudad: String = ""
 )

@@ -47,6 +47,23 @@ import com.example.app.ui.theme.Primario
 import com.example.app.ui.theme.Secundario
 import com.example.app.ui.theme.AppThemePreview
 
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.util.Patterns
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.KeyboardType
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PerfilScreen(
@@ -54,8 +71,95 @@ fun PerfilScreen(
     compromisos: List<Compromiso>,
     cantidadPagos: Int,
     onVolver: () -> Unit,
-    reportes: List<Reporte> = emptyList()
+    reportes: List<Reporte> = emptyList(),
+    onGuardarPerfil: (Usuario) -> Boolean = { false }
 ) {
+    val context = LocalContext.current
+    val preferencias = remember(context) {
+        context.getSharedPreferences("fotos_perfil", android.content.Context.MODE_PRIVATE)
+    }
+    var fotoUri by rememberSaveable(usuario.id) {
+        mutableStateOf(preferencias.getString("foto_${usuario.id}", null))
+    }
+    var error by rememberSaveable { mutableStateOf<String?>(null) }
+    var editando by rememberSaveable { mutableStateOf(false) }
+    var nombre by rememberSaveable(usuario.nombre) { mutableStateOf(usuario.nombre) }
+    var correo by rememberSaveable(usuario.correo) { mutableStateOf(usuario.correo) }
+    var rut by rememberSaveable(usuario.rut) { mutableStateOf(usuario.rut) }
+    var telefono by rememberSaveable(usuario.telefono) { mutableStateOf(usuario.telefono) }
+    var direccion by rememberSaveable(usuario.direccion) { mutableStateOf(usuario.direccion) }
+    var ciudad by rememberSaveable(usuario.ciudad) { mutableStateOf(usuario.ciudad) }
+    fun editarPerfil() {
+        nombre = usuario.nombre
+        rut = usuario.rut
+        correo = usuario.correo
+        telefono = usuario.telefono
+        direccion = usuario.direccion
+        ciudad = usuario.ciudad
+        error = null
+        editando = true
+    }
+    val foto = remember(fotoUri) {
+        fotoUri?.let { valor ->
+            runCatching {
+                val uri = Uri.parse(valor)
+                val opciones = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                context.contentResolver.openInputStream(uri)?.use {
+                    BitmapFactory.decodeStream(it, null, opciones)
+                }
+                opciones.inSampleSize = 1
+                while (maxOf(opciones.outWidth, opciones.outHeight) / opciones.inSampleSize > 512) {
+                    opciones.inSampleSize *= 2
+                }
+                opciones.inJustDecodeBounds = false
+                context.contentResolver.openInputStream(uri)?.use {
+                    BitmapFactory.decodeStream(it, null, opciones)?.asImageBitmap()
+                }
+            }.getOrNull()
+        }
+    }
+    if (editando) {
+        AlertDialog(
+            onDismissRequest = { editando = false; error = null },
+            title = { Text("Editar perfil") },
+            text = {
+                Column(modifier = Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(value = nombre, onValueChange = { nombre = it },
+                        label = { Text("Nombre completo") }, singleLine = true)
+                    OutlinedTextField(value = rut, onValueChange = { rut = it },
+                        label = { Text("RUT") }, singleLine = true)
+                    OutlinedTextField(value = correo, onValueChange = { correo = it },
+                        label = { Text("Correo electrónico") }, singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
+                    OutlinedTextField(value = telefono, onValueChange = { telefono = it },
+                        label = { Text("Teléfono") }, singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
+                    OutlinedTextField(value = direccion, onValueChange = { direccion = it },
+                        label = { Text("Dirección") }, singleLine = true)
+                    OutlinedTextField(value = ciudad, onValueChange = { ciudad = it },
+                        label = { Text("Ciudad") }, singleLine = true)
+                    error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val nombreLimpio = nombre.trim()
+                    val correoLimpio = correo.trim().lowercase()
+                    if (nombreLimpio.isBlank() || rut.isBlank() || !Patterns.EMAIL_ADDRESS.matcher(correoLimpio).matches()) {
+                        error = "Ingresa nombre completo, RUT y un correo válido."
+                    } else if (onGuardarPerfil(usuario.copy(nombre = nombreLimpio, rut = rut.trim().uppercase(), correo = correoLimpio,
+                        telefono = telefono.trim(), direccion = direccion.trim(), ciudad = ciudad.trim()))) {
+                        editando = false
+                        error = null
+                    } else {
+                        error = "No se pudo guardar. El RUT o el correo podrían estar en uso."
+                    }
+                }) { Text("Guardar") }
+            },
+            dismissButton = { TextButton(onClick = { editando = false; error = null }) { Text("Cancelar") } }
+        )
+    }
     val esAgente = usuario.rolNombre == "AGENTE"
     val pendientes = compromisos.count {
         it.estado == "Pendiente" || it.estado == "Vencido"
@@ -115,7 +219,10 @@ fun PerfilScreen(
                         .border(4.dp, MaterialTheme.colorScheme.surface, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
+                    if (foto != null) {
+                        Image(bitmap = foto, contentDescription = "Foto de perfil",
+                            contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                    } else Text(
                         text = iniciales,
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.onPrimary,
@@ -125,18 +232,37 @@ fun PerfilScreen(
             }
 
             Spacer(Modifier.height(52.dp))
-            Text(usuario.nombre, style = MaterialTheme.typography.titleLarge)
-            Text(
-                text = "${usuario.rolNombre} · ${usuario.correo}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Secundario,
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                text = "RUT: ${usuario.rut}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (usuario.rolNombre == "CLIENTE") {
+                TextButton(onClick = { error = "Permiso denegado" }) {
+                    Text("Cambiar foto de perfil")
+                }
+                if (!editando) error?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
+                }
+                TarjetaSeccion(
+                    titulo = "Información de perfil",
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                ) {
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Cliente", modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.titleSmall)
+                        IconButton(onClick = { editarPerfil() }) {
+                            Icon(painterResource(R.drawable.ic_edit), contentDescription = "Editar perfil",
+                                tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    DatoPerfil("Nombre completo", usuario.nombre)
+                    DatoPerfil("RUT", usuario.rut)
+                    DatoPerfil("Correo", usuario.correo)
+                    DatoPerfil("Teléfono", usuario.telefono)
+                    DatoPerfil("Dirección", usuario.direccion)
+                    DatoPerfil("Ciudad", usuario.ciudad)
+                }
+            } else {
+                Text(usuario.nombre, style = MaterialTheme.typography.titleLarge)
+                Text("${usuario.rolNombre} · ${usuario.correo}", color = Secundario)
+                Text("RUT: ${usuario.rut}", style = MaterialTheme.typography.bodySmall)
+            }
 
             Row(
                 modifier = Modifier
@@ -206,6 +332,17 @@ fun PerfilScreen(
             }
             Spacer(Modifier.height(20.dp))
         }
+    }
+}
+
+@Composable
+private fun DatoPerfil(etiqueta: String, valor: String) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(etiqueta, modifier = Modifier.weight(0.42f),
+            color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
+        Text(valor.ifBlank { "Sin registrar" }, modifier = Modifier.weight(0.58f),
+            textAlign = TextAlign.End, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
