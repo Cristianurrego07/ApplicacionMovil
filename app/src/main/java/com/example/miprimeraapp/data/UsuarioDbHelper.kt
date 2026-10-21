@@ -20,7 +20,7 @@ class UsuarioDbHelper(context: Context) :
 
     companion object {
         private const val NOMBRE_BD = "pagoflex.db"
-        private const val VERSION_BD = 5
+        private const val VERSION_BD = 6
 
         private const val TABLA_ROLES = "roles"
         private const val ROL_ID = "id_rol"
@@ -30,8 +30,11 @@ class UsuarioDbHelper(context: Context) :
         private const val USU_ID = "id_usuario"
         private const val USU_RUT = "rut"
         private const val USU_NOMBRE = "nombre"
+        private const val USU_APELLIDO = "apellido"
         private const val USU_CORREO = "correo"
         private const val USU_CONTRASENA = "contrasena"
+        private const val USU_TELEFONO = "telefono"
+        private const val USU_DIRECCION = "direccion"
         private const val USU_CIUDAD = "ciudad"
         private const val USU_ROL = "id_rol"
         private const val USU_AVATAR = "avatar"
@@ -96,8 +99,11 @@ class UsuarioDbHelper(context: Context) :
                 "$USU_ID INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "$USU_RUT TEXT NOT NULL DEFAULT '12.345.678-9', " +
                 "$USU_NOMBRE TEXT NOT NULL, " +
+                "$USU_APELLIDO TEXT NOT NULL DEFAULT '', " +
                 "$USU_CORREO TEXT NOT NULL UNIQUE, " +
                 "$USU_CONTRASENA TEXT NOT NULL, " +
+                "$USU_TELEFONO TEXT NOT NULL DEFAULT '+56 9 9876 5432', " +
+                "$USU_DIRECCION TEXT NOT NULL DEFAULT 'Av. Providencia 1234', " +
                 "$USU_CIUDAD TEXT NOT NULL, " +
                 "$USU_AVATAR BLOB, " +
                 "$USU_ROL INTEGER NOT NULL REFERENCES $TABLA_ROLES($ROL_ID))"
@@ -170,9 +176,9 @@ class UsuarioDbHelper(context: Context) :
                 "(1, 'Usuario'), (2, 'Agente PagoFlex'), (3, 'Ejecutivo Empresa')"
 
         private const val SQL_PRECARGAR_USUARIOS =
-            "INSERT INTO $TABLA_USUARIOS ($USU_RUT, $USU_NOMBRE, $USU_CORREO, $USU_CONTRASENA, $USU_CIUDAD, $USU_ROL) VALUES " +
-                "('10.625.244-K', 'Carla Agente', 'carla@pagoflex.cl', '123456', 'Santiago', 2), " +
-                "('9.742.142-2', 'Daniela Ejecutivo', 'daniela@empresa.cl', '123456', 'Santiago', 3)"
+            "INSERT INTO $TABLA_USUARIOS ($USU_RUT, $USU_NOMBRE, $USU_APELLIDO, $USU_CORREO, $USU_CONTRASENA, $USU_TELEFONO, $USU_DIRECCION, $USU_CIUDAD, $USU_ROL) VALUES " +
+                "('10.625.244-K', 'Carla', 'Agente', 'carla@pagoflex.cl', '123456', '+56 9 8765 4321', 'Av. Apoquindo 4500', 'Santiago', 2), " +
+                "('9.742.142-2', 'Daniela', 'Ejecutivo', 'daniela@empresa.cl', '123456', '+56 9 7654 3210', 'Av. Las Condes 1000', 'Santiago', 3)"
 
         private const val SQL_PRECARGAR_REPORTES =
             "INSERT INTO $TABLA_REPORTES ($REP_CODIGO, $REP_TITULO, $REP_CLIENTE, $REP_ESTADO, $REP_FECHA, $REP_DESCRIPCION, $REP_TIPO) VALUES " +
@@ -226,6 +232,15 @@ class UsuarioDbHelper(context: Context) :
             db.execSQL(SQL_PROTEGER_PAGOS_UPDATE)
             db.execSQL(SQL_PROTEGER_PAGOS_DELETE)
         }
+        if (oldVersion < 6) {
+            try {
+                db.execSQL("ALTER TABLE $TABLA_USUARIOS ADD COLUMN $USU_APELLIDO TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE $TABLA_USUARIOS ADD COLUMN $USU_TELEFONO TEXT NOT NULL DEFAULT '+56 9 9876 5432'")
+                db.execSQL("ALTER TABLE $TABLA_USUARIOS ADD COLUMN $USU_DIRECCION TEXT NOT NULL DEFAULT 'Av. Providencia 1234'")
+            } catch (e: Exception) {
+                // Ignore if column exists
+            }
+        }
     }
 
     fun listarRoles(): List<Rol> {
@@ -250,10 +265,14 @@ class UsuarioDbHelper(context: Context) :
         val id = db.insert(TABLA_USUARIOS, null, ContentValues().apply {
             put(USU_RUT, usuario.rut)
             put(USU_NOMBRE, usuario.nombre)
+            put(USU_APELLIDO, usuario.apellido)
             put(USU_CORREO, usuario.correo)
             put(USU_CONTRASENA, usuario.contrasena)
+            put(USU_TELEFONO, usuario.telefono)
+            put(USU_DIRECCION, usuario.direccion)
             put(USU_CIUDAD, usuario.ciudad)
             put(USU_ROL, usuario.idRol)
+            if (usuario.avatar != null) put(USU_AVATAR, usuario.avatar)
         })
         if (id > 0 && usuario.idRol == 1L) {
             db.execSQL(
@@ -294,13 +313,31 @@ class UsuarioDbHelper(context: Context) :
             ContentValues().apply {
                 put(USU_RUT, usuario.rut)
                 put(USU_NOMBRE, usuario.nombre)
+                put(USU_APELLIDO, usuario.apellido)
                 put(USU_CORREO, usuario.correo)
+                put(USU_TELEFONO, usuario.telefono)
+                put(USU_DIRECCION, usuario.direccion)
                 put(USU_CIUDAD, usuario.ciudad)
                 put(USU_ROL, usuario.idRol)
+                if (usuario.avatar != null) put(USU_AVATAR, usuario.avatar)
             },
             "$USU_ID = ?",
             arrayOf(usuario.id.toString())
         )
+
+    fun actualizarContrasena(idUsuario: Long, nuevaContrasena: String): Boolean {
+        val cv = ContentValues().apply { put(USU_CONTRASENA, nuevaContrasena) }
+        return writableDatabase.update(TABLA_USUARIOS, cv, "$USU_ID = ?", arrayOf(idUsuario.toString())) > 0
+    }
+
+    fun recuperarContrasena(correoOrRut: String, nuevaContrasena: String = "PagoFlex2026"): Usuario? {
+        val termino = correoOrRut.trim()
+        val sql = "$SQL_SELECT_USUARIOS WHERE u.$USU_CORREO = ? OR u.$USU_RUT = ?"
+        val usuario = consultarUsuarios(sql, arrayOf(termino, termino)).firstOrNull() ?: return null
+        val cv = ContentValues().apply { put(USU_CONTRASENA, nuevaContrasena) }
+        writableDatabase.update(TABLA_USUARIOS, cv, "$USU_ID = ?", arrayOf(usuario.id.toString()))
+        return usuario.copy(contrasena = nuevaContrasena)
+    }
 
     fun actualizarAvatar(id: Long, avatar: ByteArray): Int {
         val valores = ContentValues().apply { put(USU_AVATAR, avatar) }
@@ -507,6 +544,17 @@ class UsuarioDbHelper(context: Context) :
         writableDatabase.execSQL("UPDATE $TABLA_REPORTES SET $REP_ESTADO = ? WHERE $REP_ID = ?", arrayOf(nuevoEstado, id.toString()))
     }
 
+    fun insertarReporte(reporte: ReporteProblema): Long =
+        writableDatabase.insert(TABLA_REPORTES, null, ContentValues().apply {
+            put(REP_CODIGO, reporte.codigo)
+            put(REP_TITULO, reporte.titulo)
+            put(REP_CLIENTE, reporte.cliente)
+            put(REP_ESTADO, reporte.estado)
+            put(REP_FECHA, reporte.fecha)
+            put(REP_DESCRIPCION, reporte.descripcion)
+            put(REP_TIPO, reporte.tipo)
+        })
+
     // ----------------- COBRANZAS (Ejecutivo) -----------------
     fun listarCobranzas(): List<CobranzaEmpresa> {
         val lista = mutableListOf<CobranzaEmpresa>()
@@ -550,17 +598,26 @@ class UsuarioDbHelper(context: Context) :
                 lista.add(
                     Usuario(
                         nombre = cursor.getString(cursor.getColumnIndexOrThrow(USU_NOMBRE)),
+                        apellido = cursor.getColumnIndex(USU_APELLIDO).let { col ->
+                            if (col >= 0 && !cursor.isNull(col)) cursor.getString(col) else ""
+                        },
+                        rut = cursor.getColumnIndex(USU_RUT).let { col ->
+                            if (col >= 0 && !cursor.isNull(col)) cursor.getString(col) else "12.345.678-9"
+                        },
                         correo = cursor.getString(cursor.getColumnIndexOrThrow(USU_CORREO)),
                         contrasena = cursor.getString(cursor.getColumnIndexOrThrow(USU_CONTRASENA)),
+                        telefono = cursor.getColumnIndex(USU_TELEFONO).let { col ->
+                            if (col >= 0 && !cursor.isNull(col)) cursor.getString(col) else "+56 9 9876 5432"
+                        },
+                        direccion = cursor.getColumnIndex(USU_DIRECCION).let { col ->
+                            if (col >= 0 && !cursor.isNull(col)) cursor.getString(col) else "Av. Providencia 1234"
+                        },
                         ciudad = cursor.getString(cursor.getColumnIndexOrThrow(USU_CIUDAD)),
                         id = cursor.getLong(cursor.getColumnIndexOrThrow(USU_ID)),
                         idRol = cursor.getLong(cursor.getColumnIndexOrThrow(USU_ROL)),
                         nombreRol = cursor.getString(cursor.getColumnIndexOrThrow(ROL_NOMBRE)),
                         avatar = cursor.getColumnIndexOrThrow(USU_AVATAR).let { columna ->
                             if (cursor.isNull(columna)) null else cursor.getBlob(columna)
-                        },
-                        rut = cursor.getColumnIndex(USU_RUT).let { col ->
-                            if (col >= 0 && !cursor.isNull(col)) cursor.getString(col) else "12.345.678-9"
                         }
                     )
                 )

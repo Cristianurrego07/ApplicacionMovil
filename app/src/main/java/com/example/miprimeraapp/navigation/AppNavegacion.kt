@@ -65,15 +65,23 @@ fun AppNavegacion() {
                         }
                     }
                 },
-                onIrARegistro = {
-                    navController.navigate(Ruta.Registro.ruta)
+                onIrARegistro = { tipo ->
+                    navController.navigate(Ruta.Registro.crear(tipo))
                 },
                 viewModel = authViewModel
             )
         }
 
-        composable(Ruta.Registro.ruta) {
+        composable(
+            route = Ruta.Registro.ruta,
+            arguments = listOf(navArgument("tipo") {
+                type = NavType.StringType
+                defaultValue = "cliente"
+            })
+        ) { backStackEntry ->
+            val tipo = backStackEntry.arguments?.getString("tipo") ?: "cliente"
             RegistroScreen(
+                tipoRegistro = tipo,
                 onRegistroExitoso = { idRol ->
                     when (idRol) {
                         2L -> navController.navigate(Ruta.AgenteDashboard.ruta) {
@@ -147,8 +155,22 @@ fun AppNavegacion() {
                 ReportarProblemaScreen(
                     compromisos = compromisos,
                     onVolver = { navController.popBackStack() },
-                    onReportar = { folio, _ ->
-                        dbHelper.marcarCompromisoEnRevision(folio)
+                    onReportar = { folio, motivo ->
+                        val target = compromisos.find { it.folio == folio }
+                        val exitoRevision = dbHelper.marcarCompromisoEnRevision(folio)
+                        val fechaActual = java.text.SimpleDateFormat("dd MMM, yyyy - HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+                        val nuevoReporte = com.example.miprimeraapp.model.ReporteProblema(
+                            codigo = "#RP-" + System.currentTimeMillis().toString().takeLast(4),
+                            titulo = "Problema en " + (target?.titulo ?: "Compromiso"),
+                            cliente = "${u.nombre} (${u.rut})",
+                            estado = "Abierto",
+                            fecha = fechaActual,
+                            descripcion = motivo,
+                            tipo = "Reporte"
+                        )
+                        val idReporte = dbHelper.insertarReporte(nuevoReporte)
+                        pagoFlexViewModel.cargarReportes()
+                        exitoRevision && idReporte > 0
                     }
                 )
             }

@@ -8,11 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.BusinessCenter
-import androidx.compose.material.icons.filled.Cancel
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.PendingActions
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +22,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.miprimeraapp.R
 import com.example.miprimeraapp.model.CobranzaEmpresa
+import com.example.miprimeraapp.model.ReporteProblema
 import com.example.miprimeraapp.model.Usuario
 import com.example.miprimeraapp.ui.theme.PagoFlexPurple
 import com.example.miprimeraapp.viewmodel.PagoFlexViewModel
@@ -40,6 +37,9 @@ fun EjecutivoDashboardScreen(
     viewModel: PagoFlexViewModel = viewModel()
 ) {
     val cobranzas by viewModel.cobranzas.collectAsStateWithLifecycle()
+    val reportes by viewModel.reportes.collectAsStateWithLifecycle()
+
+    var tabPrincipal by remember { mutableIntStateOf(0) } // 0: Cobranzas, 1: Reportes Clientes
     var mostrarDialogo by remember { mutableStateOf(false) }
     var filtroSeleccionado by remember { mutableStateOf("Todas") }
 
@@ -48,6 +48,7 @@ fun EjecutivoDashboardScreen(
 
     LaunchedEffect(Unit) {
         viewModel.cargarCobranzas()
+        viewModel.cargarReportes()
     }
 
     val totalMonto = cobranzas.sumOf { it.monto }
@@ -116,7 +117,7 @@ fun EjecutivoDashboardScreen(
                         Column {
                             Text("Panel Ejecutivo", style = MaterialTheme.typography.titleLarge)
                             Text(
-                                text = usuario?.nombre ?: "Ejecutivo PagoFlex",
+                                text = usuario?.nombre ?: "Ejecutivo Empresa",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -137,13 +138,15 @@ fun EjecutivoDashboardScreen(
                 )
             },
             floatingActionButton = {
-                ExtendedFloatingActionButton(
-                    onClick = { mostrarDialogo = true },
-                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                    text = { Text("Nueva Cobranza") },
-                    containerColor = PagoFlexPurple,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                if (tabPrincipal == 0) {
+                    ExtendedFloatingActionButton(
+                        onClick = { mostrarDialogo = true },
+                        icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                        text = { Text("Nueva Cobranza") },
+                        containerColor = PagoFlexPurple,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
             },
             containerColor = MaterialTheme.colorScheme.background
         ) { innerPadding ->
@@ -154,113 +157,166 @@ fun EjecutivoDashboardScreen(
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Tarjetas KPI de resumen
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                TabRow(
+                    selectedTabIndex = tabPrincipal,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = PagoFlexPurple
                 ) {
-                    KpiCard(
-                        titulo = "Total Cobranzas",
-                        valor = "${cobranzas.size}",
-                        icono = Icons.Default.BusinessCenter,
-                        modifier = Modifier.weight(1f)
+                    Tab(
+                        selected = tabPrincipal == 0,
+                        onClick = { tabPrincipal = 0 },
+                        text = { Text("Cobranzas") },
+                        icon = { Icon(Icons.Default.BusinessCenter, contentDescription = null) }
                     )
-                    KpiCard(
-                        titulo = "En Curso",
-                        valor = "$enCursoCount",
-                        icono = Icons.Default.PendingActions,
-                        modifier = Modifier.weight(1f)
-                    )
-                    KpiCard(
-                        titulo = "Pagadas",
-                        valor = "$pagadasCount",
-                        icono = Icons.Default.CheckCircle,
-                        modifier = Modifier.weight(1f)
+                    Tab(
+                        selected = tabPrincipal == 1,
+                        onClick = { tabPrincipal = 1 },
+                        text = { Text("Reportes Clientes (${reportes.size})") },
+                        icon = { Icon(Icons.Default.Feedback, contentDescription = null) }
                     )
                 }
 
-                // Total Recaudado Banner
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                ) {
+                if (tabPrincipal == 0) {
+                    // Tarjetas KPI de resumen
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Column {
+                        KpiCard(
+                            titulo = "Total Cobranzas",
+                            valor = "${cobranzas.size}",
+                            icono = Icons.Default.BusinessCenter,
+                            modifier = Modifier.weight(1f)
+                        )
+                        KpiCard(
+                            titulo = "En Curso",
+                            valor = "$enCursoCount",
+                            icono = Icons.Default.PendingActions,
+                            modifier = Modifier.weight(1f)
+                        )
+                        KpiCard(
+                            titulo = "Pagadas",
+                            valor = "$pagadasCount",
+                            icono = Icons.Default.CheckCircle,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    // Total Recaudado Banner
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Monto Total en Seguimiento",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "$ %,.0f".format(totalMonto).replace(',', '.'),
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PagoFlexPurple
+                                )
+                            }
+                            Button(
+                                onClick = { mostrarDialogo = true },
+                                colors = ButtonDefaults.buttonColors(containerColor = PagoFlexPurple.copy(alpha = 0.15f))
+                            ) {
+                                Text("+ Registrar", color = PagoFlexPurple)
+                            }
+                        }
+                    }
+
+                    // Chips de filtro
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        val opciones = listOf("Todas", "En curso", "Pagada", "Anulada")
+                        items(opciones) { opcion ->
+                            FilterChip(
+                                selected = (filtroSeleccionado == opcion),
+                                onClick = { filtroSeleccionado = opcion },
+                                label = { Text(opcion) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = PagoFlexPurple,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                                )
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "Gestión de Cobranzas Empresariales",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+
+                    if (cobranzasFiltradas.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Text(
-                                text = "Monto Total en Seguimiento",
+                                text = "No hay cobranzas registradas en esta categoría",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Text(
-                                text = "$ %,.0f".format(totalMonto).replace(',', '.'),
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = PagoFlexPurple
-                            )
                         }
-                        Button(
-                            onClick = { mostrarDialogo = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = PagoFlexPurple.copy(alpha = 0.15f))
+                    } else {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
                         ) {
-                            Text("+ Registrar", color = PagoFlexPurple)
+                            items(cobranzasFiltradas) { cobranza ->
+                                CobranzaItemCard(
+                                    cobranza = cobranza,
+                                    onAnular = { viewModel.anularCobranza(cobranza.id) }
+                                )
+                            }
                         }
-                    }
-                }
-
-                // Chips de filtro
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    val opciones = listOf("Todas", "En curso", "Pagada", "Anulada")
-                    items(opciones) { opcion ->
-                        FilterChip(
-                            selected = (filtroSeleccionado == opcion),
-                            onClick = { filtroSeleccionado = opcion },
-                            label = { Text(opcion) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = PagoFlexPurple,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                            )
-                        )
-                    }
-                }
-
-                Text(
-                    text = "Gestión de Cobranzas Empresariales",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-
-                if (cobranzasFiltradas.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "No hay cobranzas registradas en esta categoría",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 } else {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        items(cobranzasFiltradas) { cobranza ->
-                            CobranzaItemCard(
-                                cobranza = cobranza,
-                                onAnular = { viewModel.anularCobranza(cobranza.id) }
-                            )
+                    // TAB 1: REPORTES DE CLIENTES
+                    Text(
+                        text = "Reportes y Solicitudes de Usuarios",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    if (reportes.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("No hay reportes de clientes registrados aún.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    } else {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            items(reportes) { rep ->
+                                ReporteClienteCard(
+                                    reporte = rep,
+                                    onCambiarEstado = { nuevoEstado ->
+                                        viewModel.actualizarEstadoReporte(rep.id, nuevoEstado)
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -274,6 +330,88 @@ fun EjecutivoDashboardScreen(
                         mostrarDialogo = false
                     }
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun ReporteClienteCard(
+    reporte: ReporteProblema,
+    onCambiarEstado: (String) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = reporte.titulo,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Cliente: ${reporte.cliente} · ${reporte.codigo}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Badge(containerColor = PagoFlexPurple.copy(alpha = 0.2f)) {
+                    Text(reporte.estado, color = PagoFlexPurple, modifier = Modifier.padding(4.dp))
+                }
+            }
+
+            Text(
+                text = reporte.descripcion,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Fecha: ${reporte.fecha}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (!reporte.estado.equals("En proceso", ignoreCase = true)) {
+                        OutlinedButton(
+                            onClick = { onCambiarEstado("En proceso") },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text("En Proceso", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                    if (!reporte.estado.equals("Resuelto", ignoreCase = true)) {
+                        Button(
+                            onClick = { onCambiarEstado("Resuelto") },
+                            colors = ButtonDefaults.buttonColors(containerColor = PagoFlexPurple),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text("Resolver", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
             }
         }
     }

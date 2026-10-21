@@ -63,7 +63,7 @@ fun ComprobanteScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Text(
-                            text = "¡Pago realizado exitosamente!",
+                            text = "Pago realizado exitosamente",
                             style = MaterialTheme.typography.titleLarge,
                             color = PagoFlexPurple
                         )

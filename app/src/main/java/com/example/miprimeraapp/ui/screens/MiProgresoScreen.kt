@@ -52,7 +52,7 @@ fun MiProgresoScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "¡Muy bien! Llevas 3 meses pagando a tiempo",
+                        text = "Has registrado 3 meses consecutivos pagando a tiempo",
                         style = MaterialTheme.typography.titleLarge,
                         color = PagoFlexPurple,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center

@@ -69,7 +69,12 @@ class FormularioViewModel : ViewModel() {
             )
         }
 
-        return if (hayErrores) null else Usuario(estado.nombre, estado.correo, estado.ciudad)
+        return if (hayErrores) null else Usuario(
+            nombre = estado.nombre,
+            correo = estado.correo,
+            contrasena = estado.contrasena,
+            ciudad = estado.ciudad
+        )
     }
 
     fun onLimpiar() {

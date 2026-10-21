@@ -152,7 +152,7 @@ fun DetalleCompromisoScreen(
                                     tint = MaterialTheme.colorScheme.secondary
                                 )
                                 Text(
-                                    text = "¡Este compromiso ya ha sido pagado exitosamente!",
+                                    text = "Este compromiso ya fue pagado exitosamente",
                                     color = MaterialTheme.colorScheme.secondary,
                                     style = MaterialTheme.typography.bodyMedium
                                 )
@@ -162,10 +162,19 @@ fun DetalleCompromisoScreen(
                 }
 
                 if (!pagadoExitoso && !compromiso.estado.equals("Pagada", ignoreCase = true)) {
+                    val context = androidx.compose.ui.platform.LocalContext.current
                     Button(
                         onClick = {
                             viewModel.pagarCompromiso(compromiso.id, usuarioId)
                             pagadoExitoso = true
+
+                            // Enviar notificación por correo de la venta / pago
+                            com.example.miprimeraapp.data.CorreoNotificador.enviarCorreo(
+                                context = context,
+                                destinatario = "cliente@pagoflex.cl",
+                                asunto = "Comprobante de Venta / Pago - PagoFlex",
+                                cuerpo = "Estimado/a cliente,\n\nTu pago para '${compromiso.titulo}' (${compromiso.empresa}) por el monto de $ %,.0f fue procesado exitosamente.\n\nFolio: ${compromiso.folio}\nGracias por preferir PagoFlex.\n\nAtentamente,\nEquipo PagoFlex".format(compromiso.monto)
+                            )
                         },
                         modifier = Modifier
                             .fillMaxWidth()
