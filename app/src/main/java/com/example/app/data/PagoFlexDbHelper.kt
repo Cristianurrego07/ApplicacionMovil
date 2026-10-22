@@ -117,12 +117,14 @@ class PagoFlexDbHelper(context: Context) :
 
         private const val SQL_PRECARGAR_ROLES =
             "INSERT INTO $TABLA_ROLES ($ID_ROL, $NOMBRE_ROL) VALUES " +
-                    "(1, 'CLIENTE'), (2, 'AGENTE')"
+                    "(1, 'CLIENTE'), (2, 'AGENTE'), (3, 'EJECUTIVO')"
 
         private const val SQL_PRECARGAR_USUARIOS =
             "INSERT INTO $TABLA_USUARIOS ($RUT, $NOMBRE, $CORREO, $CONTRASENA, $ID_ROL) VALUES " +
                     "('20.435.214-5', 'Sofia Perez', 'sofia@gmail.com', 'cli123', 1), " +
-                    "('10.625.244-K', 'Matias Sanchez', 'matias@pagoflex.com', 'age123', 2)"
+                    "('10.625.244-K', 'Matias Sanchez', 'matias@pagoflex.com', 'age123', 2)," +
+                    "('8.414.234-5', 'Luciano Lopez', 'luciano@empresas.com', 'eje123', 3)"
+
 
 
         private const val SQL_PRECARGAR_COMPROMISOS_CLIENTE =
