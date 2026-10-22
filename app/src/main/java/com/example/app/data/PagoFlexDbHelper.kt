@@ -603,6 +603,17 @@ class PagoFlexDbHelper(context: Context) :
         ).firstOrNull()
     }
 
+    // Comprueba la clave actual y cambia solo la contraseña de este usuario.
+    fun cambiarContrasena(idUsuario: Long, actual: String, nueva: String): Boolean {
+        if (nueva.isBlank() || nueva.length < 6) return false
+        val valores = ContentValues().apply { put(CONTRASENA, nueva) }
+        return writableDatabase.update(
+            TABLA_USUARIOS, valores,
+            "$ID_USUARIO = ? AND $CONTRASENA = ?",
+            arrayOf(idUsuario.toString(), actual)
+        ) == 1
+    }
+
     fun listarUsuarios(): List<Usuario> =
         consultarUsuarios("$SQL_SELECT_USUARIOS ORDER BY u.$NOMBRE", null)
 

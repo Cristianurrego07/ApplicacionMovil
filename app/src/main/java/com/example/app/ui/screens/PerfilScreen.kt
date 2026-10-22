@@ -1,5 +1,8 @@
 package com.example.app.ui.screens
 
+import com.example.app.ui.components.CambiarContrasenaDialog
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -74,9 +77,20 @@ fun PerfilScreen(
     onVolver: () -> Unit,
     reportes: List<Reporte> = emptyList(),
     onGuardarPerfil: (Usuario) -> Boolean = { false },
-    onGuardarFoto: suspend (ByteArray) -> Boolean = { false }
+    onGuardarFoto: suspend (ByteArray) -> Boolean = { false },
+    onCambiarContrasena: (String, String) -> Boolean = { _, _ -> false }
 ) {
     val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    var cambiandoContrasena by rememberSaveable(usuario.id) { mutableStateOf(false) }
+    if (cambiandoContrasena) {
+        CambiarContrasenaDialog(
+            usuarioId = usuario.id,
+            onCerrar = { cambiandoContrasena = false },
+            onCambiar = onCambiarContrasena,
+            onExito = { scope.launch { snackbar.showSnackbar("Contraseña actualizada correctamente") } }
+        )
+    }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
     var editando by rememberSaveable { mutableStateOf(false) }
     var nombre by rememberSaveable(usuario.nombre) { mutableStateOf(usuario.nombre) }
@@ -270,6 +284,14 @@ fun PerfilScreen(
                     .padding(horizontal = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                if (usuario.rolNombre == "CLIENTE" || esAgente) {
+                    TarjetaSeccion(titulo = "Seguridad y contraseña") {
+                        Text("Actualiza la contraseña de tu cuenta.")
+                        TextButton(onClick = { cambiandoContrasena = true }) {
+                            Text("Cambiar contraseña")
+                        }
+                    }
+                }
                 TarjetaSeccion(
                     titulo = "Sobre mí",
                     modifier = Modifier.heightIn(min = 112.dp)

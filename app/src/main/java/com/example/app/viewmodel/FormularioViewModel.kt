@@ -31,7 +31,7 @@ class FormularioViewModel : ViewModel() {
     fun onContrasenaCambia(valor: String) {
         _uiState.update {
             it.copy(
-                contrasena = valor.take(6),
+                contrasena = valor,
                 errorContrasena = null,
                 errorRegistro = null,
                 registroExitoso = false
@@ -58,8 +58,11 @@ class FormularioViewModel : ViewModel() {
             "Ingresa el RUT con puntos y guion" else null
         val errorCorreo = if (!estado.correo.contains("@") || !estado.correo.contains("."))
             "Ingresa un correo válido" else null
-        val errorContrasena = if (estado.contrasena.isBlank())
-            "La contraseña es obligatoria" else null
+        val errorContrasena = when {
+            estado.contrasena.isBlank() -> "La contraseña es obligatoria"
+            estado.contrasena.length < 6 -> "Mínimo 6 caracteres"
+            else -> null
+        }
         val errorTerminos = if (!estado.aceptaTerminos) "Debes aceptar los términos" else null
 
         val hayErrores = listOf(

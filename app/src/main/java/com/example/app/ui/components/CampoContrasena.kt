@@ -26,12 +26,13 @@ fun CampoContrasena(
     visible: Boolean,
     alAlternarVisible: () -> Unit,
     modifier: Modifier = Modifier,
-    error: String? = null
+    error: String? = null,
+    etiqueta: String = "Contraseña"
 ) {
     OutlinedTextField(
         value = valor,
         onValueChange = alCambiar,
-        label = { Text("Contraseña") },
+        label = { Text(etiqueta) },
         modifier = modifier.fillMaxWidth(),
         leadingIcon = {
             Icon(

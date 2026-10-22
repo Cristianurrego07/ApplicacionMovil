@@ -180,6 +180,10 @@ fun AppNavegacion() {
                         navController.navigateUp()
                     },
                     reportes = reportes,
+                    onCambiarContrasena = { actual, nueva ->
+                        runCatching { dbHelper.cambiarContrasena(usuario.id, actual, nueva) }
+                            .getOrDefault(false)
+                    },
                     onGuardarFoto = { bytes ->
                         val actualizado = withContext(Dispatchers.IO) {
                             runCatching {
