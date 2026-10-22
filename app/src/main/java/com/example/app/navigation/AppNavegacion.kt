@@ -104,19 +104,32 @@ fun AppNavegacion() {
                     }
                 },
                 onCrearCuenta = {
-                    navController.navigate(Ruta.CrearCuenta.ruta)
+                    navController.navigate(Ruta.CrearCuenta.crear("CLIENTE"))
+                },
+                onCrearCuentaAgente = {
+                    navController.navigate(Ruta.CrearCuenta.crear("AGENTE"))
                 }
             )
         }
 
-        composable(Ruta.CrearCuenta.ruta) {
+        composable(
+            route = Ruta.CrearCuenta.ruta,
+            arguments = listOf(
+                navArgument("rol") {
+                    type = NavType.StringType
+                    defaultValue = "CLIENTE"
+                }
+            )
+        ) { entry ->
+            val rol = entry.arguments?.getString("rol") ?: "CLIENTE"
             FormularioScreen(
+                rolInicial = rol,
                 onRegistroExitoso = { usuario ->
                     sesionPreferencias.guardar(usuario.id)
                     pagoFlexViewModel.iniciarSesion(usuario)
                     cargarDatosUsuario(usuario.id)
 
-                    navController.navigate(Ruta.Usuario.ruta) {
+                    navController.navigate(rutaParaRol(usuario.rolNombre)) {
                         popUpTo(Ruta.Login.ruta) { inclusive = true }
                     }
                 },

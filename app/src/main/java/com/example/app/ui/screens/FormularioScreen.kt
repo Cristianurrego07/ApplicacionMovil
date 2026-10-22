@@ -49,6 +49,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun FormularioScreen(
+    rolInicial: String = "CLIENTE",
     onRegistroExitoso: (Usuario) -> Unit,
     onVolverInicio: () -> Unit,
     viewModel: FormularioViewModel = viewModel()
@@ -79,6 +80,7 @@ fun FormularioScreen(
     ) {
         FormularioContent(
             uiState = uiState,
+            rol = rolInicial,
             onNombreCambia = viewModel::onNombreCambia,
             onRutCambia = viewModel::onRutCambia,
             onCorreoCambia = viewModel::onCorreoCambia,
@@ -86,7 +88,7 @@ fun FormularioScreen(
             onAlternarVisibilidad = viewModel::onAlternarVisibilidad,
             onTerminosCambia = viewModel::onTerminosCambia,
             onRegistrar = {
-                val usuario = viewModel.onRegistrar()
+                val usuario = viewModel.onRegistrar(rolInicial)
                 if (usuario != null) {
                     val idUsuario = dbHelper.insertarUsuario(usuario, uiState.contrasena)
                     if (idUsuario != -1L) {
@@ -111,6 +113,7 @@ fun FormularioScreen(
 @Composable
 fun FormularioContent(
     uiState: FormularioUiState,
+    rol: String = "CLIENTE",
     onNombreCambia: (String) -> Unit,
     onRutCambia: (String) -> Unit,
     onCorreoCambia: (String) -> Unit,
@@ -121,10 +124,11 @@ fun FormularioContent(
     onLimpiar: () -> Unit,
     onAbrirMenu: () -> Unit = {}
 ) {
+    val esAgente = rol == "AGENTE"
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Crear cuenta") },
+                title = { Text(if (esAgente) "Crear cuenta de agente" else "Crear cuenta") },
                 navigationIcon = {
                     IconButton(onClick = onAbrirMenu) {
                         Text("☰", style = MaterialTheme.typography.titleLarge)
@@ -141,7 +145,7 @@ fun FormularioContent(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text("Ingresa tus datos para registrarte como cliente.")
+            Text(if (esAgente) "Ingresa tus datos para registrarte como agente." else "Ingresa tus datos para registrarte como cliente.")
 
             TarjetaSeccion(titulo = "Datos personales") {
                 CampoTexto(

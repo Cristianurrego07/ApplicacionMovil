@@ -68,6 +68,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
 
+data class TarjetaBancaria(
+    val numero: String,
+    val titular: String,
+    val vencimiento: String,
+    val tipo: String
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PerfilScreen(
@@ -89,6 +96,65 @@ fun PerfilScreen(
             onCerrar = { cambiandoContrasena = false },
             onCambiar = onCambiarContrasena,
             onExito = { scope.launch { snackbar.showSnackbar("Contraseña actualizada correctamente") } }
+        )
+    }
+    var tarjetas by rememberSaveable(usuario.id) { mutableStateOf(listOf<TarjetaBancaria>()) }
+    var mostrandoDialogoTarjeta by rememberSaveable { mutableStateOf(false) }
+    var numTarjeta by rememberSaveable { mutableStateOf("") }
+    var titTarjeta by rememberSaveable(usuario.nombre) { mutableStateOf(usuario.nombre) }
+    var vencTarjeta by rememberSaveable { mutableStateOf("") }
+    var cvvTarjeta by rememberSaveable { mutableStateOf("") }
+    var tipoTarjeta by rememberSaveable { mutableStateOf("Débito") }
+    var errorTarjeta by rememberSaveable { mutableStateOf<String?>(null) }
+
+    if (mostrandoDialogoTarjeta) {
+        AlertDialog(
+            onDismissRequest = { mostrandoDialogoTarjeta = false; errorTarjeta = null },
+            title = { Text("Incorporar tarjeta de crédito o débito") },
+            text = {
+                Column(modifier = Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(value = numTarjeta, onValueChange = { numTarjeta = it },
+                        label = { Text("Número de tarjeta") }, singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                    OutlinedTextField(value = titTarjeta, onValueChange = { titTarjeta = it },
+                        label = { Text("Nombre del titular") }, singleLine = true)
+                    OutlinedTextField(value = vencTarjeta, onValueChange = { vencTarjeta = it },
+                        label = { Text("Vencimiento (MM/AA)") }, singleLine = true)
+                    OutlinedTextField(value = cvvTarjeta, onValueChange = { cvvTarjeta = it },
+                        label = { Text("CVV") }, singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Tipo:")
+                        TextButton(onClick = { tipoTarjeta = "Débito" }) {
+                            Text(if (tipoTarjeta == "Débito") "[Débito]" else "Débito")
+                        }
+                        TextButton(onClick = { tipoTarjeta = "Crédito" }) {
+                            Text(if (tipoTarjeta == "Crédito") "[Crédito]" else "Crédito")
+                        }
+                    }
+                    errorTarjeta?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (numTarjeta.isBlank() || numTarjeta.length < 12 || vencTarjeta.isBlank() || cvvTarjeta.isBlank()) {
+                        errorTarjeta = "Completa los datos correctamente (número de al menos 12 dígitos)."
+                    } else {
+                        val nuevaTarjeta = TarjetaBancaria(
+                            numero = numTarjeta.trim(),
+                            titular = titTarjeta.trim(),
+                            vencimiento = vencTarjeta.trim(),
+                            tipo = tipoTarjeta
+                        )
+                        tarjetas = tarjetas + nuevaTarjeta
+                        mostrandoDialogoTarjeta = false
+                        errorTarjeta = null
+                        scope.launch { snackbar.showSnackbar("Tarjeta $tipoTarjeta incorporada correctamente") }
+                    }
+                }) { Text("Incorporar") }
+            },
+            dismissButton = { TextButton(onClick = { mostrandoDialogoTarjeta = false; errorTarjeta = null }) { Text("Cancelar") } }
         )
     }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
@@ -289,6 +355,36 @@ fun PerfilScreen(
                         Text("Actualiza la contraseña de tu cuenta.")
                         TextButton(onClick = { cambiandoContrasena = true }) {
                             Text("Cambiar contraseña")
+                        }
+                    }
+                }
+                if (usuario.rolNombre == "CLIENTE") {
+                    TarjetaSeccion(titulo = "Tarjetas de crédito y débito") {
+                        if (tarjetas.isEmpty()) {
+                            Text("No tienes tarjetas incorporadas.", style = MaterialTheme.typography.bodyMedium)
+                        } else {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                tarjetas.forEach { t ->
+                                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                        Text("${t.tipo}: •••• ${t.numero.takeLast(4)} (${t.vencimiento})",
+                                            style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                                        TextButton(onClick = { tarjetas = tarjetas - t }) {
+                                            Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        TextButton(onClick = {
+                            numTarjeta = ""
+                            titTarjeta = usuario.nombre
+                            vencTarjeta = ""
+                            cvvTarjeta = ""
+                            errorTarjeta = null
+                            mostrandoDialogoTarjeta = true
+                        }) {
+                            Text("+ Incorporar tarjeta de crédito o débito")
                         }
                     }
                 }

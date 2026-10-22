@@ -32,6 +32,7 @@ fun LoginScreen(
     onIniciarSesion: (String, String) -> Usuario?,
     onLoginExitoso: (Usuario) -> Unit,
     onCrearCuenta: () -> Unit,
+    onCrearCuentaAgente: () -> Unit = onCrearCuenta,
     viewModel: LoginViewModel = viewModel()
 ) {
     val estado by viewModel.uiState.collectAsStateWithLifecycle()
@@ -42,7 +43,8 @@ fun LoginScreen(
         onContrasena = viewModel::cambiarContrasena,
         onVisibilidad = viewModel::alternarVisibilidad,
         onIngresar = { viewModel.iniciarSesion(onIniciarSesion)?.let(onLoginExitoso) },
-        onCrearCuenta = onCrearCuenta
+        onCrearCuenta = onCrearCuenta,
+        onCrearCuentaAgente = onCrearCuentaAgente
     )
 }
 
@@ -55,7 +57,8 @@ fun LoginContent(
     onContrasena: (String) -> Unit,
     onVisibilidad: () -> Unit,
     onIngresar: () -> Unit,
-    onCrearCuenta: () -> Unit
+    onCrearCuenta: () -> Unit,
+    onCrearCuentaAgente: () -> Unit = onCrearCuenta
 ) {
     val esCliente = estado.portal == PortalLogin.CLIENTE
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -108,9 +111,9 @@ fun LoginContent(
                     Text("¿No tienes cuenta? Regístrate como Cliente aquí")
                 }
             } else {
-                Text("Ingresa con tu cuenta de agente asignada.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                TextButton(onClick = onCrearCuentaAgente) {
+                    Text("¿No tienes cuenta? Regístrate como Agente aquí")
+                }
             }
         }
     }
