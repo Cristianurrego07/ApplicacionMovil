@@ -18,7 +18,7 @@ class PagoFlexDbHelper(context: Context) :
 
     companion object {
         private const val NOMBRE_BD = "PagoFlex.db"
-        private const val VERSION_BD = 14
+        private const val VERSION_BD = 15
         private const val TABLA_ROLES = "roles"
         private const val TABLA_USUARIOS = "usuarios"
         private const val TABLA_SERVICIOS = "servicios"
@@ -70,6 +70,7 @@ class PagoFlexDbHelper(context: Context) :
                     "telefono TEXT NOT NULL DEFAULT '',"+
                     "direccion TEXT NOT NULL DEFAULT '',"+
                     "ciudad TEXT NOT NULL DEFAULT '',"+
+                    "avatar BLOB,"+
                     "$ID_ROL INTEGER NOT NULL REFERENCES $TABLA_ROLES($ID_ROL))"
 
         private const val SQL_CREAR_SERVICIOS =
@@ -120,7 +121,7 @@ class PagoFlexDbHelper(context: Context) :
 
         private const val SQL_PRECARGAR_USUARIOS =
             "INSERT INTO $TABLA_USUARIOS ($RUT, $NOMBRE, $CORREO, $CONTRASENA, $ID_ROL) VALUES " +
-                    "('20.435.214-5', 'Sofia Perez', 'sofia@duocuc.cl', 'cli123', 1), " +
+                    "('20.435.214-5', 'Sofia Perez', 'sofia@gmail.com', 'cli123', 1), " +
                     "('10.625.244-K', 'Matias Sanchez', 'matias@pagoflex.com', 'age123', 2)"
 
 
@@ -215,6 +216,9 @@ class PagoFlexDbHelper(context: Context) :
         }
         if (oldVersion < 11) {
             db.execSQL(SQL_CREAR_REPORTES)
+        }
+        if (oldVersion < 15 && newVersion >= 15) {
+            db.execSQL("ALTER TABLE $TABLA_USUARIOS ADD COLUMN avatar BLOB")
         }
         if (oldVersion < 14) {
             db.execSQL("ALTER TABLE $TABLA_USUARIOS ADD COLUMN telefono TEXT NOT NULL DEFAULT ''")
@@ -586,10 +590,14 @@ class PagoFlexDbHelper(context: Context) :
         return servicios
     }
 
-    fun iniciarSesion(correo: String, contrasena: String): Usuario? {
+    fun iniciarSesion(identificador: String, contrasena: String): Usuario? {
+        val entrada = identificador.trim()
+        val rutNormalizado = entrada.replace(".", "").replace("-", "").replace(" ", "").uppercase()
         return consultarUsuarios(
-            "$SQL_SELECT_USUARIOS WHERE u.$CORREO = ? AND u.$CONTRASENA = ?",
-            arrayOf(correo.trim().lowercase(), contrasena)
+            "$SQL_SELECT_USUARIOS WHERE (LOWER(u.$CORREO) = ? OR " +
+                "REPLACE(REPLACE(REPLACE(UPPER(u.$RUT), '.', ''), '-', ''), ' ', '') = ?) " +
+                "AND u.$CONTRASENA = ?",
+            arrayOf(entrada.lowercase(), rutNormalizado, contrasena)
         ).firstOrNull()
     }
 
@@ -622,6 +630,10 @@ class PagoFlexDbHelper(context: Context) :
         )
     }
 
+    fun actualizarAvatar(id: Long, avatar: ByteArray): Boolean =
+        writableDatabase.update(TABLA_USUARIOS, ContentValues().apply { put("avatar", avatar) },
+            "$ID_USUARIO = ?", arrayOf(id.toString())) == 1
+
     fun eliminarUsuario(id: Long): Int {
         return writableDatabase.delete(
             TABLA_USUARIOS,
@@ -638,6 +650,7 @@ class PagoFlexDbHelper(context: Context) :
             put("telefono", usuario.telefono)
             put("direccion", usuario.direccion)
             put("ciudad", usuario.ciudad)
+            put("avatar", usuario.avatar)
     }
 
     private fun consultarUsuarios(sql: String, argumentos: Array<String>?): List<Usuario> {
@@ -660,7 +673,8 @@ class PagoFlexDbHelper(context: Context) :
             rolNombre = cursor.getString(cursor.getColumnIndexOrThrow(NOMBRE_ROL)),
             telefono = cursor.getString(cursor.getColumnIndexOrThrow("telefono")),
             direccion = cursor.getString(cursor.getColumnIndexOrThrow("direccion")),
-            ciudad = cursor.getString(cursor.getColumnIndexOrThrow("ciudad"))
+            ciudad = cursor.getString(cursor.getColumnIndexOrThrow("ciudad")),
+            avatar = cursor.getBlob(cursor.getColumnIndexOrThrow("avatar"))
         )
     }
 }

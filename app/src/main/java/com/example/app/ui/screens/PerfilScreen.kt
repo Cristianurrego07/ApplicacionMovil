@@ -47,8 +47,10 @@ import com.example.app.ui.theme.Primario
 import com.example.app.ui.theme.Secundario
 import com.example.app.ui.theme.AppThemePreview
 
-import android.graphics.BitmapFactory
-import android.net.Uri
+import com.example.app.data.ConvertidorImagen
+import com.example.app.ui.components.ControlesFotoPerfil
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import android.util.Patterns
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
@@ -59,7 +61,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
@@ -72,15 +73,10 @@ fun PerfilScreen(
     cantidadPagos: Int,
     onVolver: () -> Unit,
     reportes: List<Reporte> = emptyList(),
-    onGuardarPerfil: (Usuario) -> Boolean = { false }
+    onGuardarPerfil: (Usuario) -> Boolean = { false },
+    onGuardarFoto: suspend (ByteArray) -> Boolean = { false }
 ) {
-    val context = LocalContext.current
-    val preferencias = remember(context) {
-        context.getSharedPreferences("fotos_perfil", android.content.Context.MODE_PRIVATE)
-    }
-    var fotoUri by rememberSaveable(usuario.id) {
-        mutableStateOf(preferencias.getString("foto_${usuario.id}", null))
-    }
+    val snackbar = remember { SnackbarHostState() }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
     var editando by rememberSaveable { mutableStateOf(false) }
     var nombre by rememberSaveable(usuario.nombre) { mutableStateOf(usuario.nombre) }
@@ -99,24 +95,8 @@ fun PerfilScreen(
         error = null
         editando = true
     }
-    val foto = remember(fotoUri) {
-        fotoUri?.let { valor ->
-            runCatching {
-                val uri = Uri.parse(valor)
-                val opciones = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                context.contentResolver.openInputStream(uri)?.use {
-                    BitmapFactory.decodeStream(it, null, opciones)
-                }
-                opciones.inSampleSize = 1
-                while (maxOf(opciones.outWidth, opciones.outHeight) / opciones.inSampleSize > 512) {
-                    opciones.inSampleSize *= 2
-                }
-                opciones.inJustDecodeBounds = false
-                context.contentResolver.openInputStream(uri)?.use {
-                    BitmapFactory.decodeStream(it, null, opciones)?.asImageBitmap()
-                }
-            }.getOrNull()
-        }
+    val foto = remember(usuario.avatar) {
+        usuario.avatar?.let { ConvertidorImagen.aBitmap(it)?.asImageBitmap() }
     }
     if (editando) {
         AlertDialog(
@@ -172,6 +152,7 @@ fun PerfilScreen(
         .joinToString("")
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Mi perfil") },
@@ -232,10 +213,8 @@ fun PerfilScreen(
             }
 
             Spacer(Modifier.height(52.dp))
-            if (usuario.rolNombre == "CLIENTE") {
-                TextButton(onClick = { error = "Permiso denegado" }) {
-                    Text("Cambiar foto de perfil")
-                }
+            if (usuario.rolNombre == "CLIENTE" || esAgente) {
+                ControlesFotoPerfil(snackbar = snackbar, onGuardarFoto = onGuardarFoto)
                 if (!editando) error?.let {
                     Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
                 }
@@ -244,7 +223,7 @@ fun PerfilScreen(
                     modifier = Modifier.padding(horizontal = 12.dp)
                 ) {
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("Cliente", modifier = Modifier.weight(1f),
+                        Text(if (esAgente) "Agente" else "Cliente", modifier = Modifier.weight(1f),
                             style = MaterialTheme.typography.titleSmall)
                         IconButton(onClick = { editarPerfil() }) {
                             Icon(painterResource(R.drawable.ic_edit), contentDescription = "Editar perfil",

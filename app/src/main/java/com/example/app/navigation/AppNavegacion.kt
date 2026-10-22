@@ -1,6 +1,8 @@
 
 package com.example.app.navigation
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -178,6 +180,16 @@ fun AppNavegacion() {
                         navController.navigateUp()
                     },
                     reportes = reportes,
+                    onGuardarFoto = { bytes ->
+                        val actualizado = withContext(Dispatchers.IO) {
+                            runCatching {
+                                if (dbHelper.actualizarAvatar(usuario.id, bytes)) dbHelper.buscarPorId(usuario.id)
+                                else null
+                            }.getOrNull()
+                        }
+                        if (actualizado != null) pagoFlexViewModel.iniciarSesion(actualizado)
+                        actualizado != null
+                    },
                     onGuardarPerfil = { actualizado ->
                         val guardado = runCatching { dbHelper.actualizarUsuario(actualizado) == 1 }
                             .getOrDefault(false)

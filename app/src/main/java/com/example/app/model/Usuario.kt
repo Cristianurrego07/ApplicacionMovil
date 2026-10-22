@@ -10,5 +10,6 @@ data class Usuario(
     val rolNombre: String = "",
     val telefono: String = "",
     val direccion: String = "",
-    val ciudad: String = ""
+    val ciudad: String = "",
+    val avatar: ByteArray? = null
 )

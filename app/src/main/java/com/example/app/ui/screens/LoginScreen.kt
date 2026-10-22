@@ -1,127 +1,134 @@
 package com.example.app.ui.screens
 
 import android.content.res.Configuration
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.app.R
+import com.example.app.model.LoginUiState
+import com.example.app.model.PortalLogin
 import com.example.app.model.Usuario
-import com.example.app.ui.components.BotonPrincipal
 import com.example.app.ui.components.CampoContrasena
-import com.example.app.ui.components.CampoTexto
 import com.example.app.ui.theme.AppThemePreview
-import com.example.app.ui.theme.Primario
-import com.example.app.ui.theme.Secundario
+import com.example.app.viewmodel.LoginViewModel
 
 @Composable
 fun LoginScreen(
     onIniciarSesion: (String, String) -> Usuario?,
     onLoginExitoso: (Usuario) -> Unit,
+    onCrearCuenta: () -> Unit,
+    viewModel: LoginViewModel = viewModel()
+) {
+    val estado by viewModel.uiState.collectAsStateWithLifecycle()
+    LoginContent(
+        estado = estado,
+        onPortal = viewModel::seleccionarPortal,
+        onIdentificador = viewModel::cambiarIdentificador,
+        onContrasena = viewModel::cambiarContrasena,
+        onVisibilidad = viewModel::alternarVisibilidad,
+        onIngresar = { viewModel.iniciarSesion(onIniciarSesion)?.let(onLoginExitoso) },
+        onCrearCuenta = onCrearCuenta
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LoginContent(
+    estado: LoginUiState,
+    onPortal: (PortalLogin) -> Unit,
+    onIdentificador: (String) -> Unit,
+    onContrasena: (String) -> Unit,
+    onVisibilidad: () -> Unit,
+    onIngresar: () -> Unit,
     onCrearCuenta: () -> Unit
 ) {
-    var correo by remember { mutableStateOf("") }
-    var contrasena by remember { mutableStateOf("") }
-    var contrasenaVisible by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background,
-        contentColor = MaterialTheme.colorScheme.onBackground
-    ) {
+    val esCliente = estado.portal == PortalLogin.CLIENTE
+    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            verticalArrangement = Arrangement.Center
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                .imePadding().padding(horizontal = 24.dp, vertical = 32.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = buildAnnotatedString {
-                    withStyle(SpanStyle(color = Primario)) { append("Pago") }
-                    withStyle(SpanStyle(color = Secundario)) { append("Flex") }
-                },
-                style = MaterialTheme.typography.headlineLarge
-            )
-            Spacer(Modifier.height(8.dp))
-            Text("Inicia sesión con tu correo y contraseña.")
+            Image(painterResource(R.drawable.logo_pagoflex), contentDescription = "Logo PagoFlex",
+                modifier = Modifier.size(80.dp))
+            Text("PagoFlex", style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Text(if (esCliente) "Portal de Clientes" else "Portal de Agentes",
+                style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(24.dp))
-
-            CampoTexto(
-                valor = correo,
-                etiqueta = "Correo electrónico",
-                alCambiar = {
-                    correo = it
-                    error = null
-                }
-            )
-            Spacer(Modifier.height(12.dp))
-            CampoContrasena(
-                valor = contrasena,
-                alCambiar = {
-                    contrasena = it.take(6)
-                    error = null
-                },
-                visible = contrasenaVisible,
-                alAlternarVisible = { contrasenaVisible = !contrasenaVisible }
-            )
-            error?.let { mensaje ->
-                Spacer(Modifier.height(8.dp))
-                Text(mensaje, color = MaterialTheme.colorScheme.error)
+            TabRow(selectedTabIndex = estado.portal.ordinal,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary) {
+                Tab(selected = esCliente, onClick = { onPortal(PortalLogin.CLIENTE) },
+                    text = { Text("Portal Clientes") },
+                    icon = { Icon(painterResource(R.drawable.ic_persona), contentDescription = null) })
+                Tab(selected = !esCliente, onClick = { onPortal(PortalLogin.AGENTE) },
+                    text = { Text("Portal Agentes") },
+                    icon = { Icon(painterResource(R.drawable.ic_empresa), contentDescription = null) })
+            }
+            Spacer(Modifier.height(28.dp))
+            OutlinedTextField(value = estado.identificador, onValueChange = onIdentificador,
+                label = { Text("Correo electrónico o RUT") }, singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = { Icon(painterResource(R.drawable.ic_correo), contentDescription = null,
+                    modifier = Modifier.size(20.dp)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next))
+            Spacer(Modifier.height(20.dp))
+            CampoContrasena(valor = estado.contrasena, alCambiar = onContrasena,
+                visible = estado.contrasenaVisible, alAlternarVisible = onVisibilidad)
+            estado.error?.let {
+                Text(it, color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
             }
             Spacer(Modifier.height(20.dp))
-            BotonPrincipal(
-                texto = "Iniciar sesión",
-                onClick = {
-                    val usuario = onIniciarSesion(correo, contrasena)
-                    if (usuario == null) {
-                        error = "Correo o contraseña incorrectos."
-                    } else {
-                        error = null
-                        onLoginExitoso(usuario)
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-            TextButton(
-                onClick = onCrearCuenta,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Crear cuenta")
+            Button(onClick = onIngresar, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) {
+                Text(if (esCliente) "Iniciar Sesión Cliente" else "Iniciar Sesión Agente",
+                    style = MaterialTheme.typography.titleMedium)
+            }
+            Spacer(Modifier.height(16.dp))
+            if (esCliente) {
+                TextButton(onClick = onCrearCuenta) {
+                    Text("¿No tienes cuenta? Regístrate como Cliente aquí")
+                }
+            } else {
+                Text("Ingresa con tu cuenta de agente asignada.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
 }
 
-@Preview(name = "Claro", showBackground = true, showSystemUi = true, uiMode = Configuration.UI_MODE_NIGHT_NO)
-@Preview(name = "Oscuro", showBackground = true, showSystemUi = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(name = "Cliente claro", showBackground = true, showSystemUi = true, uiMode = Configuration.UI_MODE_NIGHT_NO)
+@Preview(name = "Cliente oscuro", showBackground = true, showSystemUi = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun LoginPreview() {
     AppThemePreview {
-        LoginScreen(
-            onIniciarSesion = { _, _ -> null },
-            onLoginExitoso = {},
-            onCrearCuenta = {}
-        )
+        LoginContent(LoginUiState(), {}, {}, {}, {}, {}, {})
+    }
+}
+
+@Preview(name = "Agente", showBackground = true, showSystemUi = true)
+@Composable
+private fun LoginAgentePreview() {
+    AppThemePreview {
+        LoginContent(LoginUiState(portal = PortalLogin.AGENTE), {}, {}, {}, {}, {}, {})
     }
 }

@@ -1,6 +1,5 @@
 package com.example.app.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -15,38 +14,42 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Primario,
-    onPrimary = Color.White,
-    primaryContainer = PrimarioOscuro,
-    onPrimaryContainer = PrimarioClaro,
+private val LightColorScheme = lightColorScheme(
+    primary = PrimarioClaroModo,
+    onPrimary = Blanco,
+    primaryContainer = Color(0xFFD1FAE5),
+    onPrimaryContainer = Color(0xFF065F46),
     secondary = Secundario,
-    onSecondary = Color.White,
-    secondaryContainer = Secundario,
-    onSecondaryContainer = SecundarioClaro,
-    tertiary = Secundario,
-    onTertiary = Color.White,
-    background = Color(0xFF14131A),
-    onBackground = Color(0xFFECEAF4),
-    surface = Color(0xFF1F1D27),
-    onSurface = Color(0xFFECEAF4)
+    onSecondary = Blanco,
+    secondaryContainer = SecundarioClaro,
+    onSecondaryContainer = Color(0xFF0C4A6E),
+    tertiary = Acento,
+    onTertiary = Blanco,
+    background = FondoClaroModo,
+    onBackground = TextoClaroModo,
+    surface = SuperficieClaraModo,
+    onSurface = TextoClaroModo,
+    surfaceVariant = Color(0xFFECFDF5),
+    onSurfaceVariant = Color(0xFF047857)
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = Primario,
-    onPrimary = Color.White,
-    primaryContainer = PrimarioClaro,
-    onPrimaryContainer = PrimarioOscuro,
+private val DarkColorScheme = darkColorScheme(
+    primary = PagoFlexGreen,
+    onPrimary = Blanco,
+    primaryContainer = Color(0xFF064E3B),
+    onPrimaryContainer = Color(0xFFD1FAE5),
     secondary = Secundario,
-    onSecondary = Color.White,
-    secondaryContainer = SecundarioClaro,
-    onSecondaryContainer = Secundario,
-    tertiary = Secundario,
-    onTertiary = Color.White,
-    background = FondoClaro,
-    surface = Color.White,
-    onBackground = Color(0xFF1C1B22),
-    onSurface = Color(0xFF1C1B22)
+    onSecondary = Blanco,
+    secondaryContainer = Color(0xFF0C4A6E),
+    onSecondaryContainer = SecundarioClaro,
+    tertiary = Acento,
+    onTertiary = Blanco,
+    background = FondoOscuroModo,
+    onBackground = TextoOscuroModo,
+    surface = SuperficieOscuraModo,
+    onSurface = TextoOscuroModo,
+    surfaceVariant = Color(0xFF1E2E28),
+    onSurfaceVariant = Color(0xFFA7F3D0)
 )
 
 @Composable
