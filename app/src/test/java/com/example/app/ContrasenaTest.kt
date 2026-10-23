@@ -8,7 +8,7 @@ import org.junit.Test
 class ContrasenaTest {
     private fun formulario(clave: String) = FormularioViewModel().apply {
         onNombreCambia("Usuario Prueba")
-        onRutCambia("20.435.214-5")
+        onRutCambia("20.435.214-3")
         onCorreoCambia("prueba@example.com")
         onTerminosCambia(true)
         onContrasenaCambia(clave)

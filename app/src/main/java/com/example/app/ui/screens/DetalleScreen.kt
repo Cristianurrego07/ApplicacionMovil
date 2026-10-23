@@ -30,11 +30,12 @@ fun DetalleScreen(
     compromiso: Compromiso,
     onVolver: () -> Unit,
     onPagar: (String) -> Boolean,
-    onReportar: (String) -> Unit
+    onReportar: (String) -> Boolean
 ) {
     var mostrarConfirmacion by remember { mutableStateOf(false) }
     var mostrarReporte by remember { mutableStateOf(false) }
     var motivo by remember { mutableStateOf("") }
+    var errorReporte by remember { mutableStateOf<String?>(null) }
     var errorPago by remember { mutableStateOf<String?>(null) }
     val vencido = compromiso.estado == "Vencido"
     val total = compromiso.monto + if (vencido) compromiso.recargo else 0
@@ -81,7 +82,7 @@ fun DetalleScreen(
                         errorPago = null
                     } else {
                         mostrarConfirmacion = false
-                        errorPago = "Debes pagar primero el compromiso más antiguo de esta empresa."
+                        errorPago = "No se pudo completar el pago. Verifica si existe un compromiso anterior pendiente de esta empresa."
                     }
                 }) { Text("Confirmar pago") }
             },
@@ -93,12 +94,23 @@ fun DetalleScreen(
         AlertDialog(
             onDismissRequest = { mostrarReporte = false },
             title = { Text("Reportar problema") },
-            text = { CampoTexto(motivo, "Motivo", { motivo = it }) },
+            text = {
+                Column {
+                    CampoTexto(motivo, "Motivo", { motivo = it; errorReporte = null })
+                    errorReporte?.let { Text(it) }
+                }
+            },
             confirmButton = {
                 TextButton(onClick = {
                     if (motivo.isNotBlank()) {
-                        onReportar(motivo)
-                        mostrarReporte = false
+                        if (onReportar(motivo.trim())) {
+                            mostrarReporte = false
+                            errorReporte = null
+                        } else {
+                            errorReporte = "No se pudo enviar el reporte. Puede existir un reporte anterior para este compromiso."
+                        }
+                    } else {
+                        errorReporte = "Describe el motivo del reporte."
                     }
                 }) { Text("Enviar") }
             },

@@ -1,5 +1,6 @@
 package com.example.app.data
 
+import com.example.app.validacion.Validaciones
 import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
@@ -542,11 +543,25 @@ class PagoFlexDbHelper(context: Context) :
     }
 
     fun insertarUsuario(usuario: Usuario, contrasena: String): Long {
-        val valores = valoresDe(usuario).apply {
-            put(CONTRASENA, contrasena)
-        }
-        return writableDatabase.insert(TABLA_USUARIOS, null, valores)
+        if (!Validaciones.rutValido(usuario.rut) || !Validaciones.correoValido(usuario.correo) ||
+            usuario.nombre.isBlank() || contrasena.isBlank() || contrasena.length < 6) return -1L
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            if (existeOtraCuenta(db, usuario.copy(id = 0))) return -1L
+            val valores = valoresDe(usuario).apply { put(CONTRASENA, contrasena) }
+            val id = db.insert(TABLA_USUARIOS, null, valores)
+            if (id != -1L) db.setTransactionSuccessful()
+            return id
+        } finally { db.endTransaction() }
     }
+
+    private fun existeOtraCuenta(db: SQLiteDatabase, usuario: Usuario): Boolean = db.rawQuery(
+        "SELECT 1 FROM $TABLA_USUARIOS WHERE $ID_USUARIO != ? AND (" +
+            "REPLACE(REPLACE(REPLACE(UPPER($RUT), '.', ''), '-', ''), ' ', '') = ? " +
+            "OR LOWER(TRIM($CORREO)) = ?) LIMIT 1",
+        arrayOf(usuario.id.toString(), Validaciones.normalizarRut(usuario.rut), usuario.correo.trim().lowercase())
+    ).use { it.moveToFirst() }
 
     fun insertarServicio(servicio: Servicio): Long {
         return writableDatabase.insert(
@@ -634,12 +649,17 @@ class PagoFlexDbHelper(context: Context) :
     }
 
     fun actualizarUsuario(usuario: Usuario): Int {
-        return writableDatabase.update(
-            TABLA_USUARIOS,
-            valoresDe(usuario),
-            "$ID_USUARIO = ?",
-            arrayOf(usuario.id.toString())
-        )
+        if (usuario.nombre.isBlank() || !Validaciones.correoValido(usuario.correo)) return 0
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val anterior = buscarPorId(usuario.id) ?: return 0
+            val conservaRut = Validaciones.normalizarRut(anterior.rut) == Validaciones.normalizarRut(usuario.rut)
+            if ((!conservaRut && !Validaciones.rutValido(usuario.rut)) || existeOtraCuenta(db, usuario)) return 0
+            val filas = db.update(TABLA_USUARIOS, valoresDe(usuario), "$ID_USUARIO = ?", arrayOf(usuario.id.toString()))
+            if (filas == 1) db.setTransactionSuccessful()
+            return filas
+        } finally { db.endTransaction() }
     }
 
     fun actualizarAvatar(id: Long, avatar: ByteArray): Boolean =
@@ -655,9 +675,9 @@ class PagoFlexDbHelper(context: Context) :
     }
 
     private fun valoresDe(usuario: Usuario) = ContentValues().apply {
-            put(RUT, usuario.rut)
+            put(RUT, Validaciones.formatearRut(usuario.rut))
             put(NOMBRE, usuario.nombre)
-            put(CORREO, usuario.correo)
+            put(CORREO, usuario.correo.trim().lowercase())
             put(ID_ROL, usuario.rolId)
             put("telefono", usuario.telefono)
             put("direccion", usuario.direccion)

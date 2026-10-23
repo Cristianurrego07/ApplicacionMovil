@@ -1,12 +1,9 @@
 package com.example.app.viewmodel
 
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.tooling.preview.Preview
+import com.example.app.validacion.Validaciones
 import androidx.lifecycle.ViewModel
 import com.example.app.model.FormularioUiState
 import com.example.app.model.Usuario
-import com.example.app.ui.screens.FormularioContent
-import com.example.app.ui.theme.AppTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -54,9 +51,9 @@ class FormularioViewModel : ViewModel() {
     fun onRegistrar(rol: String = "CLIENTE"): Usuario? {
         val estado = _uiState.value
         val errorNombre = if (estado.nombre.isBlank()) "El nombre es obligatorio" else null
-        val errorRut = if (!estado.rut.contains(".") || !estado.rut.contains("-"))
-            "Ingresa el RUT con puntos y guion" else null
-        val errorCorreo = if (!estado.correo.contains("@") || !estado.correo.contains("."))
+        val errorRut = if (!Validaciones.rutValido(estado.rut))
+            "Ingresa un RUT válido, incluyendo su dígito verificador" else null
+        val errorCorreo = if (!Validaciones.correoValido(estado.correo))
             "Ingresa un correo válido" else null
         val errorContrasena = when {
             estado.contrasena.isBlank() -> "La contraseña es obligatoria"
@@ -84,7 +81,7 @@ class FormularioViewModel : ViewModel() {
         val rolId = if (rol == "AGENTE") 2L else 1L
         val rolNombre = if (rol == "AGENTE") "AGENTE" else "CLIENTE"
         return Usuario(
-            rut = estado.rut.trim(),
+            rut = Validaciones.formatearRut(estado.rut),
             nombre = estado.nombre.trim(),
             correo = estado.correo.trim().lowercase(),
             rolId = rolId,

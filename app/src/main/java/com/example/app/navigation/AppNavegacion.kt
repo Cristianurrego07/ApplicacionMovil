@@ -7,7 +7,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -15,9 +14,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.app.data.PagoFlexDbHelper
-import com.example.app.data.SesionPreferencias
-import com.example.app.model.Compromiso
 import com.example.app.ui.screens.AgenteScreen
 import com.example.app.ui.screens.AgregarServicioScreen
 import com.example.app.ui.screens.ComprobanteScreen
@@ -35,15 +31,6 @@ import com.example.app.viewmodel.PagoFlexViewModel
 @Composable
 fun AppNavegacion() {
     val navController = rememberNavController()
-    val context = LocalContext.current
-
-    val dbHelper = remember(context) {
-        PagoFlexDbHelper(context.applicationContext)
-    }
-
-    val sesionPreferencias = remember(context) {
-        SesionPreferencias(context.applicationContext)
-    }
 
     val pagoFlexViewModel: PagoFlexViewModel = viewModel()
 
@@ -52,25 +39,16 @@ fun AppNavegacion() {
     val usuarioActual by pagoFlexViewModel.usuarioActual.collectAsStateWithLifecycle()
     val servicios by pagoFlexViewModel.servicios.collectAsStateWithLifecycle()
 
-    val usuarioGuardado = remember {
-        val idUsuario = sesionPreferencias.leer()
-        if (idUsuario == -1L) {
-            null
-        } else {
-            dbHelper.buscarPorId(idUsuario).also { usuario ->
-                if (usuario == null) sesionPreferencias.borrar()
-            }
-        }
-    }
+    val usuarioGuardado = remember { pagoFlexViewModel.recuperarSesion() }
 
     // Cargar siempre los datos del usuario correspondiente.
     fun cargarDatosUsuario(usuarioId: Long) {
-        pagoFlexViewModel.cargarReportes(dbHelper.listarReportes())
+        pagoFlexViewModel.cargarReportes(pagoFlexViewModel.listarReportes())
         pagoFlexViewModel.cargarServicios(
-            dbHelper.listarServicios(usuarioId)
+            pagoFlexViewModel.listarServicios(usuarioId)
         )
         pagoFlexViewModel.cargarCompromisos(
-            dbHelper.listarCompromisos(usuarioId)
+            pagoFlexViewModel.listarCompromisos(usuarioId)
         )
     }
 
@@ -92,9 +70,9 @@ fun AppNavegacion() {
     ) {
         composable(Ruta.Login.ruta) {
             LoginScreen(
-                onIniciarSesion = dbHelper::iniciarSesion,
+                onIniciarSesion = pagoFlexViewModel::iniciarSesion,
                 onLoginExitoso = { usuario ->
-                    sesionPreferencias.guardar(usuario.id)
+                    pagoFlexViewModel.guardarSesion(usuario.id)
                     pagoFlexViewModel.iniciarSesion(usuario)
                     cargarDatosUsuario(usuario.id)
 
@@ -124,8 +102,9 @@ fun AppNavegacion() {
             val rol = entry.arguments?.getString("rol") ?: "CLIENTE"
             FormularioScreen(
                 rolInicial = rol,
+                onGuardarUsuario = pagoFlexViewModel::registrarUsuario,
                 onRegistroExitoso = { usuario ->
-                    sesionPreferencias.guardar(usuario.id)
+                    pagoFlexViewModel.guardarSesion(usuario.id)
                     pagoFlexViewModel.iniciarSesion(usuario)
                     cargarDatosUsuario(usuario.id)
 
@@ -149,7 +128,6 @@ fun AppNavegacion() {
                     it.usuarioId == usuarioActual?.id
                 },
                 onVolver = {
-                    sesionPreferencias.borrar()
                     pagoFlexViewModel.cerrarSesion()
                     navController.navigate(Ruta.Login.ruta) {
                         popUpTo(Ruta.Usuario.ruta) { inclusive = true }
@@ -188,19 +166,19 @@ fun AppNavegacion() {
                     compromisos = compromisos.filter {
                         it.usuario.id == usuario.id
                     },
-                    cantidadPagos = dbHelper.listarComprobantes(usuario.id).size,
+                    cantidadPagos = pagoFlexViewModel.listarComprobantes(usuario.id).size,
                     onVolver = {
                         navController.navigateUp()
                     },
                     reportes = reportes,
                     onCambiarContrasena = { actual, nueva ->
-                        runCatching { dbHelper.cambiarContrasena(usuario.id, actual, nueva) }
+                        runCatching { pagoFlexViewModel.cambiarContrasena(usuario.id, actual, nueva) }
                             .getOrDefault(false)
                     },
                     onGuardarFoto = { bytes ->
                         val actualizado = withContext(Dispatchers.IO) {
                             runCatching {
-                                if (dbHelper.actualizarAvatar(usuario.id, bytes)) dbHelper.buscarPorId(usuario.id)
+                                if (pagoFlexViewModel.actualizarAvatar(usuario.id, bytes)) pagoFlexViewModel.buscarPorId(usuario.id)
                                 else null
                             }.getOrNull()
                         }
@@ -208,7 +186,7 @@ fun AppNavegacion() {
                         actualizado != null
                     },
                     onGuardarPerfil = { actualizado ->
-                        val guardado = runCatching { dbHelper.actualizarUsuario(actualizado) == 1 }
+                        val guardado = runCatching { pagoFlexViewModel.actualizarUsuario(actualizado) == 1 }
                             .getOrDefault(false)
                         if (guardado) {
                             pagoFlexViewModel.iniciarSesion(actualizado)
@@ -229,11 +207,11 @@ fun AppNavegacion() {
                     navController.navigateUp()
                 },
                 onReportar = { folio, motivo ->
-                    if (dbHelper.registrarReporte(folio, motivo)) {
-                        pagoFlexViewModel.cargarReportes(dbHelper.listarReportes())
+                    if (pagoFlexViewModel.registrarReporte(folio, motivo)) {
+                        pagoFlexViewModel.cargarReportes(pagoFlexViewModel.listarReportes())
                         usuarioActual?.let {
                             pagoFlexViewModel.cargarCompromisos(
-                                dbHelper.listarCompromisos(it.id)
+                                pagoFlexViewModel.listarCompromisos(it.id)
                             )
                         }
                         true
@@ -247,7 +225,7 @@ fun AppNavegacion() {
         composable(Ruta.HistorialPagos.ruta) {
             HistorialPagosScreen(
                 comprobantes = usuarioActual
-                    ?.let { dbHelper.listarComprobantes(it.id) }
+                    ?.let { pagoFlexViewModel.listarComprobantes(it.id) }
                     .orEmpty(),
                 onVolver = {
                     navController.navigateUp()
@@ -274,13 +252,13 @@ fun AppNavegacion() {
                         }
                     },
                     onGuardarServicio = { servicio ->
-                        val idServicio = dbHelper.insertarServicio(servicio)
+                        val idServicio = pagoFlexViewModel.insertarServicio(servicio)
 
                         if (idServicio == -1L) {
                             false
                         } else {
                             pagoFlexViewModel.cargarServicios(
-                                dbHelper.listarServicios(usuario.id)
+                                pagoFlexViewModel.listarServicios(usuario.id)
                             )
                             true
                         }
@@ -302,10 +280,10 @@ fun AppNavegacion() {
                     if (usuario == null) {
                         false
                     } else {
-                        val eliminado = dbHelper.eliminarCompromiso(compromiso.folio, usuario.id)
+                        val eliminado = pagoFlexViewModel.eliminarCompromiso(compromiso.folio, usuario.id)
                         if (eliminado) {
                             pagoFlexViewModel.cargarCompromisos(
-                                dbHelper.listarCompromisos(usuario.id)
+                                pagoFlexViewModel.listarCompromisos(usuario.id)
                             )
                         }
                         eliminado
@@ -325,7 +303,6 @@ fun AppNavegacion() {
                     navController.navigate(Ruta.HistorialReportes.ruta)
                 },
                 onCerrarSesion = {
-                    sesionPreferencias.borrar()
                     pagoFlexViewModel.cerrarSesion()
                     navController.navigate(Ruta.Login.ruta) {
                         popUpTo(Ruta.Agente.ruta) { inclusive = true }
@@ -333,13 +310,13 @@ fun AppNavegacion() {
                 },
                 onCambiarEstado = { reporte, estado ->
                     val actualizado = if (estado == "En proceso") {
-                        dbHelper.actualizarEstadoReporte(reporte.folio, estado)
+                        pagoFlexViewModel.actualizarEstadoReporte(reporte.folio, estado)
                     } else {
-                        dbHelper.resolverReporte(reporte.folio, estado)
+                        pagoFlexViewModel.resolverReporte(reporte.folio, estado)
                     }
                     if (actualizado) {
-                        pagoFlexViewModel.cargarReportes(dbHelper.listarReportes())
-                        pagoFlexViewModel.cargarCompromisos(dbHelper.listarCompromisos())
+                        pagoFlexViewModel.cargarReportes(pagoFlexViewModel.listarReportes())
+                        pagoFlexViewModel.cargarCompromisos(pagoFlexViewModel.listarCompromisos())
                     }
                     actualizado
                 }
@@ -378,7 +355,7 @@ fun AppNavegacion() {
                         navController.navigateUp()
                     },
                     onPagar = { medioPago ->
-                        val comprobante = dbHelper.confirmarPago(
+                        val comprobante = pagoFlexViewModel.confirmarPago(
                             folio,
                             medioPago
                         )
@@ -386,7 +363,7 @@ fun AppNavegacion() {
                         if (comprobante != null) {
                             usuarioActual?.let {
                                 pagoFlexViewModel.cargarCompromisos(
-                                    dbHelper.listarCompromisos(it.id)
+                                    pagoFlexViewModel.listarCompromisos(it.id)
                                 )
                             }
 
@@ -403,13 +380,16 @@ fun AppNavegacion() {
                         }
                     },
                     onReportar = { motivo ->
-                        if (dbHelper.registrarReporte(folio, motivo)) {
-                            pagoFlexViewModel.cargarReportes(dbHelper.listarReportes())
+                        if (pagoFlexViewModel.registrarReporte(folio, motivo)) {
+                            pagoFlexViewModel.cargarReportes(pagoFlexViewModel.listarReportes())
                             usuarioActual?.let {
                                 pagoFlexViewModel.cargarCompromisos(
-                                    dbHelper.listarCompromisos(it.id)
+                                    pagoFlexViewModel.listarCompromisos(it.id)
                                 )
                             }
+                            true
+                        } else {
+                            false
                         }
                     }
                 )
@@ -427,7 +407,7 @@ fun AppNavegacion() {
             val folio = entrada.arguments?.getString("folio") ?: ""
 
             ComprobanteScreen(
-                comprobante = dbHelper.buscarComprobante(folio),
+                comprobante = pagoFlexViewModel.buscarComprobante(folio),
                 onVolver = {
                     navController.navigateUp()
                 }

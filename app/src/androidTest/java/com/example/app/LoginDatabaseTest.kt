@@ -28,7 +28,17 @@ class LoginDatabaseTest {
             PagoFlexDbHelper(contexto).use { db ->
                 db.insertarUsuario(Usuario(rut = "11.111.111-1", nombre = "Prueba Login",
                     correo = "prueba@example.com", rolId = 1, rolNombre = "CLIENTE"), "claveInicial123")
+                val duplicado = Usuario(rut = "111111111", nombre = "Duplicado", correo = "otro@example.com", rolId = 1, rolNombre = "CLIENTE")
+                assertEquals(-1L, db.insertarUsuario(duplicado, "clave123"))
+                assertEquals(-1L, db.insertarUsuario(duplicado.copy(rut = "20.435.214-3", correo = "PRUEBA@EXAMPLE.COM"), "clave123"))
+                assertEquals(-1L, db.insertarUsuario(duplicado.copy(rut = ".-"), "clave123"))
                 val prueba = requireNotNull(db.iniciarSesion(" PRUEBA@EXAMPLE.COM ", "claveInicial123"))
+                assertEquals(1, db.actualizarUsuario(prueba.copy(rut = "111111111", nombre = "Nombre editado")))
+                val legado = requireNotNull(db.iniciarSesion("204352145", "cli123"))
+                assertEquals(1, db.actualizarUsuario(legado.copy(nombre = "Nombre conservando RUT antiguo")))
+                assertEquals(0, db.actualizarUsuario(legado.copy(rut = "11.111.111-1")))
+                assertEquals(0, db.actualizarUsuario(legado.copy(correo = "@.")))
+                assertEquals(0, db.actualizarUsuario(legado.copy(rut = ".-")))
                 assertEquals("CLIENTE", prueba.rolNombre)
                 val cliente = requireNotNull(db.iniciarSesion("20.435.214-5", "cli123"))
                 assertEquals("CLIENTE", cliente.rolNombre)

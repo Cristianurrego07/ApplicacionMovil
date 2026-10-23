@@ -54,7 +54,11 @@ import com.example.app.data.ConvertidorImagen
 import com.example.app.ui.components.ControlesFotoPerfil
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import android.util.Patterns
+import com.example.app.validacion.Validaciones
+import com.example.app.viewmodel.TarjetasViewModel
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
@@ -68,13 +72,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
 
-data class TarjetaBancaria(
-    val numero: String,
-    val titular: String,
-    val vencimiento: String,
-    val tipo: String
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PerfilScreen(
@@ -85,7 +82,8 @@ fun PerfilScreen(
     reportes: List<Reporte> = emptyList(),
     onGuardarPerfil: (Usuario) -> Boolean = { false },
     onGuardarFoto: suspend (ByteArray) -> Boolean = { false },
-    onCambiarContrasena: (String, String) -> Boolean = { _, _ -> false }
+    onCambiarContrasena: (String, String) -> Boolean = { _, _ -> false },
+    tarjetasViewModel: TarjetasViewModel = viewModel(key = "tarjetas_${usuario.id}")
 ) {
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -98,18 +96,24 @@ fun PerfilScreen(
             onExito = { scope.launch { snackbar.showSnackbar("Contraseña actualizada correctamente") } }
         )
     }
-    var tarjetas by rememberSaveable(usuario.id) { mutableStateOf(listOf<TarjetaBancaria>()) }
+    val tarjetas by tarjetasViewModel.tarjetas.collectAsStateWithLifecycle()
     var mostrandoDialogoTarjeta by rememberSaveable { mutableStateOf(false) }
-    var numTarjeta by rememberSaveable { mutableStateOf("") }
+    var numTarjeta by remember(usuario.id) { mutableStateOf("") }
     var titTarjeta by rememberSaveable(usuario.nombre) { mutableStateOf(usuario.nombre) }
     var vencTarjeta by rememberSaveable { mutableStateOf("") }
-    var cvvTarjeta by rememberSaveable { mutableStateOf("") }
+    var cvvTarjeta by remember(usuario.id) { mutableStateOf("") }
     var tipoTarjeta by rememberSaveable { mutableStateOf("Débito") }
     var errorTarjeta by rememberSaveable { mutableStateOf<String?>(null) }
 
+    fun cerrarTarjeta() {
+        mostrandoDialogoTarjeta = false
+        numTarjeta = ""
+        cvvTarjeta = ""
+        errorTarjeta = null
+    }
     if (mostrandoDialogoTarjeta) {
         AlertDialog(
-            onDismissRequest = { mostrandoDialogoTarjeta = false; errorTarjeta = null },
+            onDismissRequest = { cerrarTarjeta() },
             title = { Text("Incorporar tarjeta de crédito o débito") },
             text = {
                 Column(modifier = Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
@@ -141,20 +145,13 @@ fun PerfilScreen(
                     if (numTarjeta.isBlank() || numTarjeta.length < 12 || vencTarjeta.isBlank() || cvvTarjeta.isBlank()) {
                         errorTarjeta = "Completa los datos correctamente (número de al menos 12 dígitos)."
                     } else {
-                        val nuevaTarjeta = TarjetaBancaria(
-                            numero = numTarjeta.trim(),
-                            titular = titTarjeta.trim(),
-                            vencimiento = vencTarjeta.trim(),
-                            tipo = tipoTarjeta
-                        )
-                        tarjetas = tarjetas + nuevaTarjeta
-                        mostrandoDialogoTarjeta = false
-                        errorTarjeta = null
+                        tarjetasViewModel.agregar(numTarjeta.trim(), titTarjeta.trim(), vencTarjeta.trim(), tipoTarjeta)
+                        cerrarTarjeta()
                         scope.launch { snackbar.showSnackbar("Tarjeta $tipoTarjeta incorporada correctamente") }
                     }
                 }) { Text("Incorporar") }
             },
-            dismissButton = { TextButton(onClick = { mostrandoDialogoTarjeta = false; errorTarjeta = null }) { Text("Cancelar") } }
+            dismissButton = { TextButton(onClick = { cerrarTarjeta() }) { Text("Cancelar") } }
         )
     }
     var error by rememberSaveable { mutableStateOf<String?>(null) }
@@ -206,9 +203,14 @@ fun PerfilScreen(
                 TextButton(onClick = {
                     val nombreLimpio = nombre.trim()
                     val correoLimpio = correo.trim().lowercase()
-                    if (nombreLimpio.isBlank() || rut.isBlank() || !Patterns.EMAIL_ADDRESS.matcher(correoLimpio).matches()) {
-                        error = "Ingresa nombre completo, RUT y un correo válido."
-                    } else if (onGuardarPerfil(usuario.copy(nombre = nombreLimpio, rut = rut.trim().uppercase(), correo = correoLimpio,
+                    val conservaRut = Validaciones.normalizarRut(rut) == Validaciones.normalizarRut(usuario.rut)
+                    if (nombreLimpio.isBlank()) {
+                        error = "Ingresa tu nombre completo."
+                    } else if ((!conservaRut && !Validaciones.rutValido(rut)) || rut.isBlank()) {
+                        error = "Ingresa un RUT válido, incluyendo su dígito verificador."
+                    } else if (!Validaciones.correoValido(correoLimpio)) {
+                        error = "Ingresa un correo electrónico válido."
+                    } else if (onGuardarPerfil(usuario.copy(nombre = nombreLimpio, rut = Validaciones.formatearRut(rut), correo = correoLimpio,
                         telefono = telefono.trim(), direccion = direccion.trim(), ciudad = ciudad.trim()))) {
                         editando = false
                         error = null
@@ -366,9 +368,9 @@ fun PerfilScreen(
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 tarjetas.forEach { t ->
                                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                        Text("${t.tipo}: •••• ${t.numero.takeLast(4)} (${t.vencimiento})",
+                                        Text("${t.tipo}: •••• ${t.ultimosCuatro} (${t.vencimiento})",
                                             style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                                        TextButton(onClick = { tarjetas = tarjetas - t }) {
+                                        TextButton(onClick = { tarjetasViewModel.eliminar(t) }) {
                                             Text("Eliminar", color = MaterialTheme.colorScheme.error)
                                         }
                                     }
@@ -476,7 +478,8 @@ private fun PerfilPreview() {
                 )
             ),
             cantidadPagos = 1,
-            onVolver = {}
+            onVolver = {},
+            tarjetasViewModel = remember { TarjetasViewModel(SavedStateHandle()) }
         )
     }
 }

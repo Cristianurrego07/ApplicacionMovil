@@ -25,9 +25,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -35,8 +33,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.app.model.FormularioUiState
 import com.example.app.model.Usuario
-import com.example.app.data.PagoFlexDbHelper
-import com.example.app.data.SesionPreferencias
 import com.example.app.ui.components.BotonPrincipal
 import com.example.app.ui.components.BotonSecundario
 import com.example.app.ui.components.CampoContrasena
@@ -52,12 +48,10 @@ fun FormularioScreen(
     rolInicial: String = "CLIENTE",
     onRegistroExitoso: (Usuario) -> Unit,
     onVolverInicio: () -> Unit,
+    onGuardarUsuario: (Usuario, String) -> Usuario? = { _, _ -> null },
     viewModel: FormularioViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    val dbHelper = remember(context) { PagoFlexDbHelper(context.applicationContext) }
-    val sesionPreferencias = remember(context) { SesionPreferencias(context.applicationContext) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -90,11 +84,8 @@ fun FormularioScreen(
             onRegistrar = {
                 val usuario = viewModel.onRegistrar(rolInicial)
                 if (usuario != null) {
-                    val idUsuario = dbHelper.insertarUsuario(usuario, uiState.contrasena)
-                    if (idUsuario != -1L) {
-                        sesionPreferencias.guardar(idUsuario)
-                        val usuarioGuardado = dbHelper.buscarPorId(idUsuario)
-                            ?: usuario.copy(id = idUsuario)
+                    val usuarioGuardado = onGuardarUsuario(usuario, uiState.contrasena)
+                    if (usuarioGuardado != null) {
                         onRegistroExitoso(usuarioGuardado)
                     } else {
                         viewModel.onRegistroFallido(
