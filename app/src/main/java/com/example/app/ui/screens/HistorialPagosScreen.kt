@@ -17,13 +17,19 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.example.app.R
 import com.example.app.model.Comprobante
+import com.example.app.ui.components.CampoTexto
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,6 +38,14 @@ fun HistorialPagosScreen(
     onVolver: () -> Unit,
     onVerComprobante: (String) -> Unit
 ) {
+    var filtro by rememberSaveable { mutableStateOf("") }
+    val busqueda = filtro.trim()
+    val comprobantesFiltrados = comprobantes.filter { comprobante ->
+        comprobante.numero.contains(busqueda, ignoreCase = true) ||
+            comprobante.empresa.contains(busqueda, ignoreCase = true) ||
+            comprobante.concepto.contains(busqueda, ignoreCase = true)
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
@@ -60,15 +74,29 @@ fun HistorialPagosScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            if (comprobantes.isNotEmpty()) {
+                CampoTexto(
+                    valor = filtro,
+                    etiqueta = "Buscar por número, empresa o concepto",
+                    alCambiar = { filtro = it }
+                )
+                if (filtro.isNotEmpty()) {
+                    TextButton(onClick = { filtro = "" }) {
+                        Text("Limpiar filtro")
+                    }
+                }
+            }
             if (comprobantes.isEmpty()) {
                 Text("Todavía no tienes pagos registrados.")
+            } else if (comprobantesFiltrados.isEmpty()) {
+                Text("No hay comprobantes que coincidan con tu búsqueda.")
             } else {
                 LazyColumn(
                     modifier = Modifier.weight(1f),
                     contentPadding = PaddingValues(bottom = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(comprobantes, key = { it.numero }) { comprobante ->
+                    items(comprobantesFiltrados, key = { it.numero }) { comprobante ->
                         Card(
                             onClick = { onVerComprobante(comprobante.folioCompromiso) },
                             modifier = Modifier.fillMaxWidth(),
