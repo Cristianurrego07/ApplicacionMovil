@@ -1,5 +1,7 @@
 package com.example.app.ui.screens
 
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -37,7 +39,17 @@ fun HistorialReportesScreen(
             CenterAlignedTopAppBar(
                 title = { Text(if (esAgente) "Historial de reportes" else "Mis reportes") },
                 navigationIcon = {
-                    androidx.compose.material3.TextButton(onClick = onVolver) {
+                    androidx.compose.foundation.layout.Box(
+                            modifier = androidx.compose.ui.Modifier
+                                .size(48.dp)
+                                .clickable(
+                                    interactionSource = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                    indication = null,
+                                    role = androidx.compose.ui.semantics.Role.Button,
+                                    onClick = onVolver
+                                ),
+                            contentAlignment = androidx.compose.ui.Alignment.Center
+                        ) {
                         Text("‹", style = MaterialTheme.typography.headlineMedium)
                     }
                 },

@@ -1,5 +1,7 @@
 package com.example.app.ui.screens
 
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,7 +13,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -51,7 +52,17 @@ fun MisServiciosScreen(
             TopAppBar(
                 title = { Text("Eliminar servicios") },
                 navigationIcon = {
-                    IconButton(onClick = onVolver) {
+                    androidx.compose.foundation.layout.Box(
+                            modifier = androidx.compose.ui.Modifier
+                                .size(48.dp)
+                                .clickable(
+                                    interactionSource = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                    indication = null,
+                                    role = androidx.compose.ui.semantics.Role.Button,
+                                    onClick = onVolver
+                                ),
+                            contentAlignment = androidx.compose.ui.Alignment.Center
+                        ) {
                         Icon(
                             painter = painterResource(R.drawable.ic_arrow_back),
                             contentDescription = "Volver",

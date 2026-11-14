@@ -1,8 +1,8 @@
 package com.example.app.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -45,7 +45,17 @@ fun CampoContrasena(
         colors = EstilosCampo.colores(),
         visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
         trailingIcon = {
-            IconButton(onClick = alAlternarVisible) {
+            androidx.compose.foundation.layout.Box(
+                            modifier = androidx.compose.ui.Modifier
+                                .size(48.dp)
+                                .clickable(
+                                    interactionSource = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                    indication = null,
+                                    role = androidx.compose.ui.semantics.Role.Button,
+                                    onClick = alAlternarVisible
+                                ),
+                            contentAlignment = androidx.compose.ui.Alignment.Center
+                        ) {
                 Icon(
                     painter = painterResource(
                         if (visible) R.drawable.ic_ojo_tachado else R.drawable.ic_ojo
