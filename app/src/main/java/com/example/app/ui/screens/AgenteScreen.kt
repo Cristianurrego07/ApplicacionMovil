@@ -1,5 +1,7 @@
 package com.example.app.ui.screens
 
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,7 +15,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
@@ -144,7 +145,17 @@ fun AgenteScreen(
                         navigationIconContentColor = Secundario
                     ),
                     navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                        androidx.compose.foundation.layout.Box(
+                            modifier = androidx.compose.ui.Modifier
+                                .size(48.dp)
+                                .clickable(
+                                    interactionSource = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                    indication = null,
+                                    role = androidx.compose.ui.semantics.Role.Button,
+                                    onClick = { scope.launch { drawerState.open() } }
+                                ),
+                            contentAlignment = androidx.compose.ui.Alignment.Center
+                        ) {
                             Text("☰", color = Secundario)
                         }
                     }
