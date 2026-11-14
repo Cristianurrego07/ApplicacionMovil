@@ -9,5 +9,7 @@ data class LoginUiState(
     val identificador: String = "",
     val contrasena: String = "",
     val contrasenaVisible: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val errorIdentificador: String? = null,
+    val errorContrasena: String? = null
 )

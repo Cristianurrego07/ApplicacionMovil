@@ -7,6 +7,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -26,6 +29,8 @@ import com.example.app.ui.screens.LoginScreen
 import com.example.app.ui.screens.MisServiciosScreen
 import com.example.app.ui.screens.PerfilScreen
 import com.example.app.ui.screens.ReportarProblemaScreen
+import com.example.app.ui.screens.RecuperarContrasenaScreen
+import com.example.app.ui.screens.PasoRecuperacion
 import com.example.app.viewmodel.PagoFlexViewModel
 
 @Composable
@@ -84,9 +89,35 @@ fun AppNavegacion() {
                 onCrearCuenta = {
                     navController.navigate(Ruta.CrearCuenta.crear("CLIENTE"))
                 },
-                onCrearCuentaAgente = {
-                    navController.navigate(Ruta.CrearCuenta.crear("AGENTE"))
+                onRecuperarContrasena = {
+                    navController.navigate(Ruta.RecuperarContrasena.ruta)
                 }
+            )
+        }
+
+        composable(Ruta.RecuperarContrasena.ruta) {
+            var correo by rememberSaveable { mutableStateOf("") }
+            var mensaje by rememberSaveable { mutableStateOf<String?>(null) }
+            RecuperarContrasenaScreen(
+                paso = PasoRecuperacion.CORREO,
+                correo = correo,
+                codigo = "",
+                nuevaContrasena = "",
+                confirmarContrasena = "",
+                contrasenaVisible = false,
+                error = mensaje,
+                onCorreoCambia = { correo = it; mensaje = null },
+                onCodigoCambia = {},
+                onNuevaContrasenaCambia = {},
+                onConfirmarContrasenaCambia = {},
+                onAlternarVisibilidad = {},
+                onSolicitarCodigo = {
+                    mensaje = if (correo.isBlank()) "Ingresa tu correo electrónico."
+                        else "La recuperación aún no está conectada al servicio."
+                },
+                onVerificarCodigo = {},
+                onRestablecerContrasena = {},
+                onVolver = { navController.navigateUp() }
             )
         }
 

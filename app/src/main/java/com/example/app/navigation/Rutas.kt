@@ -2,6 +2,7 @@ package com.example.app.navigation
 
 sealed class Ruta(val ruta: String) {
     data object Login : Ruta("login")
+    data object RecuperarContrasena : Ruta("recuperar-contrasena")
     data object CrearCuenta : Ruta("crear-cuenta?rol={rol}") {
         fun crear(rol: String = "CLIENTE") = "crear-cuenta?rol=$rol"
     }
