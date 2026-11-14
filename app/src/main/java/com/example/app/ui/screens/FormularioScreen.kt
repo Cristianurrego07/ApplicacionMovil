@@ -1,5 +1,7 @@
 package com.example.app.ui.screens
 
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,7 +16,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.MaterialTheme
@@ -121,7 +122,17 @@ fun FormularioContent(
             TopAppBar(
                 title = { Text(if (esAgente) "Crear cuenta de agente" else "Crear cuenta") },
                 navigationIcon = {
-                    IconButton(onClick = onAbrirMenu) {
+                    androidx.compose.foundation.layout.Box(
+                            modifier = androidx.compose.ui.Modifier
+                                .size(48.dp)
+                                .clickable(
+                                    interactionSource = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                    indication = null,
+                                    role = androidx.compose.ui.semantics.Role.Button,
+                                    onClick = onAbrirMenu
+                                ),
+                            contentAlignment = androidx.compose.ui.Alignment.Center
+                        ) {
                         Text("☰", style = MaterialTheme.typography.titleLarge)
                     }
                 }
