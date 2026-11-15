@@ -57,7 +57,7 @@ class ServicioViewModel : ViewModel() {
         return Servicio(
             usuarioId = usuarioId,
             nombreEmpresa = estado.nombreEmpresa.trim(),
-            rutPagador = estado.rutPagador.trim(),
+            rutPagador = Validaciones.formatearRut(estado.rutPagador),
             alias = estado.alias.trim()
         )
     }

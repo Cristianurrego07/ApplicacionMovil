@@ -1,13 +1,15 @@
 package com.example.app.ui.screens
 
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.clickable
 import android.content.res.Configuration
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -23,8 +25,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.app.R
@@ -44,29 +48,38 @@ fun MisServiciosScreen(
     onVolver: () -> Unit,
     onEliminar: (Compromiso) -> Boolean
 ) {
-    var compromisoSeleccionado by remember { mutableStateOf<Compromiso?>(null) }
-    var errorEliminar by remember { mutableStateOf<String?>(null) }
+    var compromisoSeleccionado by remember {
+        mutableStateOf<Compromiso?>(null)
+    }
+    var errorEliminar by remember {
+        mutableStateOf<String?>(null)
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Eliminar servicios") },
+                title = {
+                    Text(
+                        text = "Eliminar servicios",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
                 navigationIcon = {
-                    androidx.compose.foundation.layout.Box(
-                            modifier = androidx.compose.ui.Modifier
-                                .size(48.dp)
-                                .clickable(
-                                    interactionSource = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                                    indication = null,
-                                    role = androidx.compose.ui.semantics.Role.Button,
-                                    onClick = onVolver
-                                ),
-                            contentAlignment = androidx.compose.ui.Alignment.Center
-                        ) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                role = Role.Button,
+                                onClick = onVolver
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Icon(
                             painter = painterResource(R.drawable.ic_arrow_back),
                             contentDescription = "Volver",
-                            tint = Secundario
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -92,11 +105,11 @@ fun MisServiciosScreen(
             ) {
                 items(compromisos, key = { it.folio }) { compromiso ->
                     TarjetaSeccion(titulo = compromiso.empresa) {
-                        Text(compromiso.concepto)
-                        Text("Folio: ${compromiso.folio}")
-                        Text("Monto: ${formatearMonto(compromiso.monto)}")
-                        Text("Vencimiento: ${fechaVisible(compromiso.vencimiento)}")
-                        EtiquetaEstado(compromiso.estado)
+                        Text(text = compromiso.concepto)
+                        Text(text = "Folio: ${compromiso.folio}")
+                        Text(text = "Monto: ${formatearMonto(compromiso.monto)}")
+                        Text(text = "Vencimiento: ${fechaVisible(compromiso.vencimiento)}")
+                        EtiquetaEstado(estado = compromiso.estado)
                         if (compromiso.estado == "Pendiente" || compromiso.estado == "Vencido") {
                             TextButton(
                                 onClick = {
@@ -104,11 +117,14 @@ fun MisServiciosScreen(
                                     errorEliminar = null
                                 }
                             ) {
-                                Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                                Text(
+                                    text = "Eliminar",
+                                    color = MaterialTheme.colorScheme.error
+                                )
                             }
                         } else {
                             Text(
-                                "No se puede eliminar porque tiene un pago o reporte asociado.",
+                                text = "No se puede eliminar porque tiene un pago o reporte asociado.",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodySmall
                             )
@@ -125,31 +141,38 @@ fun MisServiciosScreen(
                 compromisoSeleccionado = null
                 errorEliminar = null
             },
-            title = { Text("Eliminar compromiso") },
+            title = { Text(text = "Eliminar compromiso") },
             text = {
                 Column {
-                    Text("¿Quieres eliminar ${compromiso.concepto} de ${compromiso.empresa}?")
-                    errorEliminar?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    Text(text = "¿Quieres eliminar ${compromiso.concepto} de ${compromiso.empresa}?")
+                    errorEliminar?.let { mensaje ->
+                        Text(text = mensaje, color = MaterialTheme.colorScheme.error)
+                    }
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    if (onEliminar(compromiso)) {
-                        compromisoSeleccionado = null
-                        errorEliminar = null
-                    } else {
-                        errorEliminar = "No se puede eliminar un compromiso con pago o reporte asociado."
+                TextButton(
+                    onClick = {
+                        if (onEliminar(compromiso)) {
+                            compromisoSeleccionado = null
+                            errorEliminar = null
+                        } else {
+                            errorEliminar =
+                                "No se puede eliminar un compromiso con pago o reporte asociado."
+                        }
                     }
-                }) {
-                    Text("Eliminar")
+                ) {
+                    Text(text = "Eliminar", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = {
-                    compromisoSeleccionado = null
-                    errorEliminar = null
-                }) {
-                    Text("Cancelar")
+                TextButton(
+                    onClick = {
+                        compromisoSeleccionado = null
+                        errorEliminar = null
+                    }
+                ) {
+                    Text(text = "Cancelar")
                 }
             }
         )
@@ -171,13 +194,38 @@ private fun fechaVisible(fecha: String): String = try {
 @Composable
 private fun MisServiciosPreview() {
     AppThemePreview {
-        val usuario = Usuario(1, "20.435.214-5", "Sofía Pérez", "sofia@duocuc.cl", 1, "CLIENTE")
+        val usuario = Usuario(1,
+            "20.435.214-5",
+            "Sofía Pérez",
+            "sofia@duocuc.cl",
+            1,
+            "CLIENTE")
         MisServiciosScreen(
             compromisos = listOf(
-                Compromiso("PF-001", "Universidad", usuario, "Mensualidad", 350000, "2026-10-15"),
-                Compromiso("PF-002", "Enel", usuario, "Luz", 28000, "2026-10-20"),
-                Compromiso("PF-003", "Condominio", usuario, "Gasto común", 45000, "2026-10-28"),
-                Compromiso("PF-004", "Agua", usuario, "Cuenta de agua", 35000, "2026-10-29")
+                Compromiso("PF-001",
+                    "Universidad",
+                    usuario,
+                    "Mensualidad",
+                    350000,
+                    "2026-10-15"),
+                Compromiso("PF-002",
+                    "Enel",
+                    usuario,
+                    "Luz",
+                    28000,
+                    "2026-10-20"),
+                Compromiso("PF-003",
+                    "Condominio",
+                    usuario,
+                    "Gasto común",
+                    45000,
+                    "2026-10-28"),
+                Compromiso("PF-004",
+                    "Agua",
+                    usuario,
+                    "Cuenta de agua",
+                    35000,
+                    "2026-10-29")
             ),
             onVolver = {},
             onEliminar = { true }

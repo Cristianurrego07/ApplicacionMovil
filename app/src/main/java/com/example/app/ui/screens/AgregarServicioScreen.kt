@@ -172,7 +172,7 @@ private fun AgregarServicioConErroresPreview() {
         AgregarServicioContent(
             uiState = ServicioUiState(
                 errorNombreEmpresa = "El nombre de la empresa es obligatorio",
-                errorRutPagador = "Ingresa un RUT válido con puntos y guion",
+                errorRutPagador = "Ingresa un RUT válido, incluyendo su dígito verificador",
                 errorAlias = "El alias es obligatorio"
             ),
             onVolver = {},
