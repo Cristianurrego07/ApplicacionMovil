@@ -1,15 +1,12 @@
-
 package com.example.app.navigation
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -27,16 +24,18 @@ import com.example.app.ui.screens.HistorialReportesScreen
 import com.example.app.ui.screens.InicioScreen
 import com.example.app.ui.screens.LoginScreen
 import com.example.app.ui.screens.MisServiciosScreen
-import com.example.app.ui.screens.PerfilScreen
-import com.example.app.ui.screens.ReportarProblemaScreen
-import com.example.app.ui.screens.RecuperarContrasenaScreen
 import com.example.app.ui.screens.PasoRecuperacion
+import com.example.app.ui.screens.PerfilScreen
+import com.example.app.ui.screens.RecuperarContrasenaScreen
+import com.example.app.ui.screens.ReportarProblemaScreen
+import com.example.app.ui.screens.UsuarioScreen
 import com.example.app.viewmodel.PagoFlexViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun AppNavegacion() {
     val navController = rememberNavController()
-
     val pagoFlexViewModel: PagoFlexViewModel = viewModel()
 
     val compromisos by pagoFlexViewModel.compromisos.collectAsStateWithLifecycle()
@@ -44,26 +43,34 @@ fun AppNavegacion() {
     val usuarioActual by pagoFlexViewModel.usuarioActual.collectAsStateWithLifecycle()
     val servicios by pagoFlexViewModel.servicios.collectAsStateWithLifecycle()
 
-    val usuarioGuardado = remember { pagoFlexViewModel.recuperarSesion() }
+    val usuarioGuardado = remember {
+        pagoFlexViewModel.recuperarSesion()
+    }
 
-    // Cargar siempre los datos del usuario correspondiente.
     fun cargarDatosUsuario(usuarioId: Long) {
-        pagoFlexViewModel.cargarReportes(pagoFlexViewModel.listarReportes())
+        pagoFlexViewModel.cargarReportes(
+            pagoFlexViewModel.listarReportes()
+        )
+
         pagoFlexViewModel.cargarServicios(
             pagoFlexViewModel.listarServicios(usuarioId)
         )
+
         pagoFlexViewModel.cargarCompromisos(
             pagoFlexViewModel.listarCompromisos(usuarioId)
         )
     }
 
+    // Recupera la sesión si el usuario ya había iniciado sesión.
     LaunchedEffect(usuarioGuardado) {
         usuarioGuardado?.let { usuario ->
             pagoFlexViewModel.iniciarSesion(usuario)
             cargarDatosUsuario(usuario.id)
 
             navController.navigate(rutaParaRol(usuario.rolNombre)) {
-                popUpTo(Ruta.Login.ruta) { inclusive = true }
+                popUpTo(Ruta.Login.ruta) {
+                    inclusive = true
+                }
                 launchSingleTop = true
             }
         }
@@ -73,6 +80,7 @@ fun AppNavegacion() {
         navController = navController,
         startDestination = Ruta.Login.ruta
     ) {
+        // Inicio de sesión
         composable(Ruta.Login.ruta) {
             LoginScreen(
                 onIniciarSesion = pagoFlexViewModel::iniciarSesion,
@@ -82,12 +90,14 @@ fun AppNavegacion() {
                     cargarDatosUsuario(usuario.id)
 
                     navController.navigate(rutaParaRol(usuario.rolNombre)) {
-                        popUpTo(Ruta.Login.ruta) { inclusive = true }
+                        popUpTo(Ruta.Login.ruta) {
+                            inclusive = true
+                        }
                         launchSingleTop = true
                     }
                 },
                 onCrearCuenta = {
-                    navController.navigate(Ruta.CrearCuenta.crear("CLIENTE"))
+                    navController.navigate(Ruta.CrearCuenta.ruta)
                 },
                 onRecuperarContrasena = {
                     navController.navigate(Ruta.RecuperarContrasena.ruta)
@@ -95,9 +105,16 @@ fun AppNavegacion() {
             )
         }
 
+        // Recuperación de contraseña
         composable(Ruta.RecuperarContrasena.ruta) {
-            var correo by rememberSaveable { mutableStateOf("") }
-            var mensaje by rememberSaveable { mutableStateOf<String?>(null) }
+            var correo by rememberSaveable {
+                mutableStateOf("")
+            }
+
+            var mensaje by rememberSaveable {
+                mutableStateOf<String?>(null)
+            }
+
             RecuperarContrasenaScreen(
                 paso = PasoRecuperacion.CORREO,
                 correo = correo,
@@ -106,33 +123,32 @@ fun AppNavegacion() {
                 confirmarContrasena = "",
                 contrasenaVisible = false,
                 error = mensaje,
-                onCorreoCambia = { correo = it; mensaje = null },
+                onCorreoCambia = { valor ->
+                    correo = valor
+                    mensaje = null
+                },
                 onCodigoCambia = {},
                 onNuevaContrasenaCambia = {},
                 onConfirmarContrasenaCambia = {},
                 onAlternarVisibilidad = {},
                 onSolicitarCodigo = {
-                    mensaje = if (correo.isBlank()) "Ingresa tu correo electrónico."
-                        else "La recuperación aún no está conectada al servicio."
+                    mensaje = if (correo.isBlank()) {
+                        "Ingresa tu correo electrónico."
+                    } else {
+                        "La recuperación aún no está conectada al servicio."
+                    }
                 },
                 onVerificarCodigo = {},
                 onRestablecerContrasena = {},
-                onVolver = { navController.navigateUp() }
+                onVolver = {
+                    navController.navigateUp()
+                }
             )
         }
 
-        composable(
-            route = Ruta.CrearCuenta.ruta,
-            arguments = listOf(
-                navArgument("rol") {
-                    type = NavType.StringType
-                    defaultValue = "CLIENTE"
-                }
-            )
-        ) { entry ->
-            val rol = entry.arguments?.getString("rol") ?: "CLIENTE"
+        // Crear cuenta de cliente
+        composable(Ruta.CrearCuenta.ruta) {
             FormularioScreen(
-                rolInicial = rol,
                 onGuardarUsuario = pagoFlexViewModel::registrarUsuario,
                 onRegistroExitoso = { usuario ->
                     pagoFlexViewModel.guardarSesion(usuario.id)
@@ -140,7 +156,9 @@ fun AppNavegacion() {
                     cargarDatosUsuario(usuario.id)
 
                     navController.navigate(rutaParaRol(usuario.rolNombre)) {
-                        popUpTo(Ruta.Login.ruta) { inclusive = true }
+                        popUpTo(Ruta.Login.ruta) {
+                            inclusive = true
+                        }
                     }
                 },
                 onVolverInicio = {
@@ -149,6 +167,7 @@ fun AppNavegacion() {
             )
         }
 
+        // Inicio del cliente
         composable(Ruta.Usuario.ruta) {
             InicioScreen(
                 usuario = usuarioActual,
@@ -160,8 +179,11 @@ fun AppNavegacion() {
                 },
                 onVolver = {
                     pagoFlexViewModel.cerrarSesion()
+
                     navController.navigate(Ruta.Login.ruta) {
-                        popUpTo(Ruta.Usuario.ruta) { inclusive = true }
+                        popUpTo(Ruta.Usuario.ruta) {
+                            inclusive = true
+                        }
                     }
                 },
                 onVerDetalle = { folio ->
@@ -169,6 +191,9 @@ fun AppNavegacion() {
                 },
                 onVerPerfil = {
                     navController.navigate(Ruta.Perfil.ruta)
+                },
+                onVerCompromisos = {
+                    navController.navigate(Ruta.MisCompromisos.ruta)
                 },
                 onAgregarServicio = {
                     navController.navigate(Ruta.AgregarServicio.ruta)
@@ -188,6 +213,23 @@ fun AppNavegacion() {
             )
         }
 
+        // Lista de compromisos
+        composable(Ruta.MisCompromisos.ruta) {
+            UsuarioScreen(
+                usuario = usuarioActual,
+                compromisos = compromisos.filter {
+                    it.usuario.id == usuarioActual?.id
+                },
+                onVolver = {
+                    navController.navigateUp()
+                },
+                onVerDetalle = { folio ->
+                    navController.navigate(Ruta.Detalle.crear(folio))
+                }
+            )
+        }
+
+        // Perfil
         composable(Ruta.Perfil.ruta) {
             val usuario = usuarioActual
 
@@ -197,38 +239,61 @@ fun AppNavegacion() {
                     compromisos = compromisos.filter {
                         it.usuario.id == usuario.id
                     },
-                    cantidadPagos = pagoFlexViewModel.listarComprobantes(usuario.id).size,
+                    cantidadPagos = pagoFlexViewModel
+                        .listarComprobantes(usuario.id)
+                        .size,
+                    reportes = reportes,
                     onVolver = {
                         navController.navigateUp()
                     },
-                    reportes = reportes,
                     onCambiarContrasena = { actual, nueva ->
-                        runCatching { pagoFlexViewModel.cambiarContrasena(usuario.id, actual, nueva) }
-                            .getOrDefault(false)
+                        runCatching {
+                            pagoFlexViewModel.cambiarContrasena(
+                                usuario.id,
+                                actual,
+                                nueva
+                            )
+                        }.getOrDefault(false)
                     },
                     onGuardarFoto = { bytes ->
                         val actualizado = withContext(Dispatchers.IO) {
                             runCatching {
-                                if (pagoFlexViewModel.actualizarAvatar(usuario.id, bytes)) pagoFlexViewModel.buscarPorId(usuario.id)
-                                else null
+                                val guardado = pagoFlexViewModel.actualizarAvatar(
+                                    usuario.id,
+                                    bytes
+                                )
+
+                                if (guardado) {
+                                    pagoFlexViewModel.buscarPorId(usuario.id)
+                                } else {
+                                    null
+                                }
                             }.getOrNull()
                         }
-                        if (actualizado != null) pagoFlexViewModel.iniciarSesion(actualizado)
+
+                        if (actualizado != null) {
+                            pagoFlexViewModel.iniciarSesion(actualizado)
+                        }
+
                         actualizado != null
                     },
                     onGuardarPerfil = { actualizado ->
-                        val guardado = runCatching { pagoFlexViewModel.actualizarUsuario(actualizado) == 1 }
-                            .getOrDefault(false)
+                        val guardado = runCatching {
+                            pagoFlexViewModel.actualizarUsuario(actualizado) == 1
+                        }.getOrDefault(false)
+
                         if (guardado) {
                             pagoFlexViewModel.iniciarSesion(actualizado)
                             cargarDatosUsuario(actualizado.id)
                         }
+
                         guardado
                     }
                 )
             }
         }
 
+        // Reportar problema
         composable(Ruta.ReportarProblema.ruta) {
             ReportarProblemaScreen(
                 compromisos = compromisos.filter {
@@ -238,35 +303,50 @@ fun AppNavegacion() {
                     navController.navigateUp()
                 },
                 onReportar = { folio, motivo ->
-                    if (pagoFlexViewModel.registrarReporte(folio, motivo)) {
-                        pagoFlexViewModel.cargarReportes(pagoFlexViewModel.listarReportes())
-                        usuarioActual?.let {
+                    val enviado = pagoFlexViewModel.registrarReporte(
+                        folio,
+                        motivo
+                    )
+
+                    if (enviado) {
+                        pagoFlexViewModel.cargarReportes(
+                            pagoFlexViewModel.listarReportes()
+                        )
+
+                        usuarioActual?.let { usuario ->
                             pagoFlexViewModel.cargarCompromisos(
-                                pagoFlexViewModel.listarCompromisos(it.id)
+                                pagoFlexViewModel.listarCompromisos(usuario.id)
                             )
                         }
-                        true
-                    } else {
-                        false
                     }
+
+                    enviado
                 }
             )
         }
 
+        // Historial de pagos
         composable(Ruta.HistorialPagos.ruta) {
             HistorialPagosScreen(
                 comprobantes = usuarioActual
                     ?.let { pagoFlexViewModel.listarComprobantes(it.id) }
                     .orEmpty(),
+                compromisos = compromisos.filter {
+                    it.usuario.id == usuarioActual?.id
+                },
                 onVolver = {
                     navController.navigateUp()
                 },
                 onVerComprobante = { folio ->
                     navController.navigate(Ruta.Comprobante.crear(folio))
+                },
+                onVerDetalle = { folio ->
+                    navController.navigate(Ruta.Detalle.crear(folio))
                 }
             )
         }
 
+        // Agregar servicio
         composable(Ruta.AgregarServicio.ruta) {
             val usuario = usuarioActual
 
@@ -283,7 +363,9 @@ fun AppNavegacion() {
                         }
                     },
                     onGuardarServicio = { servicio ->
-                        val idServicio = pagoFlexViewModel.insertarServicio(servicio)
+                        val idServicio = pagoFlexViewModel.insertarServicio(
+                            servicio
+                        )
 
                         if (idServicio == -1L) {
                             false
@@ -298,6 +380,7 @@ fun AppNavegacion() {
             }
         }
 
+        // Eliminar servicios
         composable(Ruta.MisServicios.ruta) {
             MisServiciosScreen(
                 compromisos = compromisos.filter {
@@ -308,21 +391,28 @@ fun AppNavegacion() {
                 },
                 onEliminar = { compromiso ->
                     val usuario = usuarioActual
+
                     if (usuario == null) {
                         false
                     } else {
-                        val eliminado = pagoFlexViewModel.eliminarCompromiso(compromiso.folio, usuario.id)
+                        val eliminado = pagoFlexViewModel.eliminarCompromiso(
+                            compromiso.folio,
+                            usuario.id
+                        )
+
                         if (eliminado) {
                             pagoFlexViewModel.cargarCompromisos(
                                 pagoFlexViewModel.listarCompromisos(usuario.id)
                             )
                         }
+
                         eliminado
                     }
                 }
             )
         }
 
+        // Panel del agente
         composable(Ruta.Agente.ruta) {
             AgenteScreen(
                 usuario = usuarioActual,
@@ -335,39 +425,66 @@ fun AppNavegacion() {
                 },
                 onCerrarSesion = {
                     pagoFlexViewModel.cerrarSesion()
+
                     navController.navigate(Ruta.Login.ruta) {
-                        popUpTo(Ruta.Agente.ruta) { inclusive = true }
+                        popUpTo(Ruta.Agente.ruta) {
+                            inclusive = true
+                        }
                     }
                 },
                 onCambiarEstado = { reporte, estado ->
                     val actualizado = if (estado == "En proceso") {
-                        pagoFlexViewModel.actualizarEstadoReporte(reporte.folio, estado)
+                        pagoFlexViewModel.actualizarEstadoReporte(
+                            reporte.folio,
+                            estado
+                        )
                     } else {
-                        pagoFlexViewModel.resolverReporte(reporte.folio, estado)
+                        pagoFlexViewModel.resolverReporte(
+                            reporte.folio,
+                            estado
+                        )
                     }
+
                     if (actualizado) {
-                        pagoFlexViewModel.cargarReportes(pagoFlexViewModel.listarReportes())
-                        pagoFlexViewModel.cargarCompromisos(pagoFlexViewModel.listarCompromisos())
+                        pagoFlexViewModel.cargarReportes(
+                            pagoFlexViewModel.listarReportes()
+                        )
+                        pagoFlexViewModel.cargarCompromisos(
+                            pagoFlexViewModel.listarCompromisos()
+                        )
                     }
+
                     actualizado
                 }
             )
         }
 
+        // Historial de reportes
         composable(Ruta.HistorialReportes.ruta) {
             val esAgente = usuarioActual?.rolNombre == "AGENTE"
+
             val foliosUsuario = compromisos
                 .filter { it.usuario.id == usuarioActual?.id }
                 .map { it.folio }
                 .toSet()
+
             HistorialReportesScreen(
-                reportes = if (esAgente) reportes else reportes.filter { it.folio in foliosUsuario },
-                compromisos = compromisos.filter { it.usuario.id == usuarioActual?.id },
+                reportes = if (esAgente) {
+                    reportes
+                } else {
+                    reportes.filter { it.folio in foliosUsuario }
+                },
+                compromisos = compromisos.filter {
+                    it.usuario.id == usuarioActual?.id
+                },
                 esAgente = esAgente,
-                onVolver = { navController.navigateUp() }
+                onVolver = {
+                    navController.navigateUp()
+                }
             )
         }
 
+        // Detalle de un compromiso
         composable(
             route = Ruta.Detalle.ruta,
             arguments = listOf(
@@ -377,7 +494,9 @@ fun AppNavegacion() {
             )
         ) { entrada ->
             val folio = entrada.arguments?.getString("folio") ?: ""
-            val compromiso = compromisos.find { it.folio == folio }
+            val compromiso = compromisos.find {
+                it.folio == folio
+            }
 
             if (compromiso != null) {
                 DetalleScreen(
@@ -392,15 +511,13 @@ fun AppNavegacion() {
                         )
 
                         if (comprobante != null) {
-                            usuarioActual?.let {
+                            usuarioActual?.let { usuario ->
                                 pagoFlexViewModel.cargarCompromisos(
-                                    pagoFlexViewModel.listarCompromisos(it.id)
+                                    pagoFlexViewModel.listarCompromisos(usuario.id)
                                 )
                             }
 
-                            navController.navigate(
-                                Ruta.Comprobante.crear(folio)
-                            ) {
+                            navController.navigate(Ruta.Comprobante.crear(folio)) {
                                 popUpTo(Ruta.Usuario.ruta) {
                                     inclusive = false
                                 }
@@ -411,22 +528,30 @@ fun AppNavegacion() {
                         }
                     },
                     onReportar = { motivo ->
-                        if (pagoFlexViewModel.registrarReporte(folio, motivo)) {
-                            pagoFlexViewModel.cargarReportes(pagoFlexViewModel.listarReportes())
-                            usuarioActual?.let {
+                        val enviado = pagoFlexViewModel.registrarReporte(
+                            folio,
+                            motivo
+                        )
+
+                        if (enviado) {
+                            pagoFlexViewModel.cargarReportes(
+                                pagoFlexViewModel.listarReportes()
+                            )
+
+                            usuarioActual?.let { usuario ->
                                 pagoFlexViewModel.cargarCompromisos(
-                                    pagoFlexViewModel.listarCompromisos(it.id)
+                                    pagoFlexViewModel.listarCompromisos(usuario.id)
                                 )
                             }
-                            true
-                        } else {
-                            false
                         }
+
+                        enviado
                     }
                 )
             }
         }
 
+        // Comprobante de pago
         composable(
             route = Ruta.Comprobante.ruta,
             arguments = listOf(
@@ -447,6 +572,7 @@ fun AppNavegacion() {
     }
 }
 
+// Decide la pantalla inicial según el rol de la cuenta.
 private fun rutaParaRol(rol: String): String {
     return when (rol) {
         "CLIENTE" -> Ruta.Usuario.ruta

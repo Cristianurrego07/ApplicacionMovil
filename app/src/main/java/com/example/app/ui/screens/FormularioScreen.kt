@@ -2,8 +2,10 @@ package com.example.app.ui.screens
 
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.MaterialTheme
@@ -26,12 +29,17 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.app.R
 import com.example.app.model.FormularioUiState
 import com.example.app.model.Usuario
 import com.example.app.ui.components.BotonPrincipal
@@ -66,8 +74,10 @@ fun FormularioScreen(
                     label = { Text("Inicio") },
                     selected = false,
                     onClick = {
-                        scope.launch { drawerState.close() }
-                        onVolverInicio()
+                        scope.launch {
+                            drawerState.close()
+                            onVolverInicio()
+                        }
                     }
                 )
             }
@@ -80,10 +90,11 @@ fun FormularioScreen(
             onRutCambia = viewModel::onRutCambia,
             onCorreoCambia = viewModel::onCorreoCambia,
             onContrasenaCambia = viewModel::onContrasenaCambia,
+            onConfirmarContrasenaCambia = viewModel::onConfirmarContrasenaCambia,
             onAlternarVisibilidad = viewModel::onAlternarVisibilidad,
             onTerminosCambia = viewModel::onTerminosCambia,
             onRegistrar = {
-                val usuario = viewModel.onRegistrar(rolInicial)
+                val usuario = viewModel.onRegistrar()
                 if (usuario != null) {
                     val usuarioGuardado = onGuardarUsuario(usuario, uiState.contrasena)
                     if (usuarioGuardado != null) {
@@ -96,7 +107,11 @@ fun FormularioScreen(
                 }
             },
             onLimpiar = viewModel::onLimpiar,
-            onAbrirMenu = { scope.launch { drawerState.open() } }
+            onAbrirMenu = {
+                scope.launch {
+                    drawerState.open()
+                }
+            }
         )
     }
 }
@@ -110,6 +125,7 @@ fun FormularioContent(
     onRutCambia: (String) -> Unit,
     onCorreoCambia: (String) -> Unit,
     onContrasenaCambia: (String) -> Unit,
+    onConfirmarContrasenaCambia: (String) -> Unit,
     onAlternarVisibilidad: () -> Unit,
     onTerminosCambia: (Boolean) -> Unit,
     onRegistrar: () -> Unit,
@@ -122,18 +138,23 @@ fun FormularioContent(
             TopAppBar(
                 title = { Text(if (esAgente) "Crear cuenta de agente" else "Crear cuenta") },
                 navigationIcon = {
-                    androidx.compose.foundation.layout.Box(
-                            modifier = androidx.compose.ui.Modifier
-                                .size(48.dp)
-                                .clickable(
-                                    interactionSource = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                                    indication = null,
-                                    role = androidx.compose.ui.semantics.Role.Button,
-                                    onClick = onAbrirMenu
-                                ),
-                            contentAlignment = androidx.compose.ui.Alignment.Center
-                        ) {
-                        Text("☰", style = MaterialTheme.typography.titleLarge)
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                role = Role.Button,
+                                onClick = onAbrirMenu
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_menu),
+                            contentDescription = "Abrir menú",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
             )
@@ -174,6 +195,14 @@ fun FormularioContent(
                     visible = uiState.contrasenaVisible,
                     alAlternarVisible = onAlternarVisibilidad,
                     error = uiState.errorContrasena
+                )
+                CampoContrasena(
+                    valor = uiState.confirmarContrasena,
+                    alCambiar = onConfirmarContrasenaCambia,
+                    visible = uiState.contrasenaVisible,
+                    alAlternarVisible = onAlternarVisibilidad,
+                    error = uiState.errorConfirmarContrasena,
+                    etiqueta = "Repetir contraseña"
                 )
             }
 
@@ -228,7 +257,8 @@ private fun FormularioVacioPreview() {
         FormularioContent(
             uiState = FormularioUiState(),
             onNombreCambia = {}, onRutCambia = {}, onCorreoCambia = {},
-            onContrasenaCambia = {}, onAlternarVisibilidad = {}, onTerminosCambia = {},
+            onContrasenaCambia = {}, onConfirmarContrasenaCambia = {},
+            onAlternarVisibilidad = {}, onTerminosCambia = {},
             onRegistrar = {}, onLimpiar = {}, onAbrirMenu = {}
         )
     }
@@ -245,10 +275,12 @@ private fun FormularioConErroresPreview(){
                 errorRut = "Ingresa un rut válido",
                 errorCorreo = "Ingresa un correo válido",
                 errorContrasena = "Minímo 6 caracteres",
+                errorConfirmarContrasena = "Repite la contraseña",
                 errorTerminos = "Debes aceptar los términos y condiciones"
             ),
             onNombreCambia = {}, onRutCambia = {}, onCorreoCambia = {},
-            onContrasenaCambia = {}, onAlternarVisibilidad = {}, onTerminosCambia = {},
+            onContrasenaCambia = {}, onConfirmarContrasenaCambia = {},
+            onAlternarVisibilidad = {}, onTerminosCambia = {},
             onRegistrar = {}, onLimpiar = {}, onAbrirMenu = {}
         )
     }

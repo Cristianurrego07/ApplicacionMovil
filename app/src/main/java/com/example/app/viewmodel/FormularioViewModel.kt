@@ -89,7 +89,7 @@ class FormularioViewModel : ViewModel() {
         _uiState.value = FormularioUiState()
     }
 
-    fun onRegistrar(rol: String = "CLIENTE"): Usuario? {
+    fun onRegistrar(): Usuario? {
         val estado = _uiState.value
 
         val errorNombre = if (estado.nombre.isBlank()) {
@@ -181,15 +181,12 @@ class FormularioViewModel : ViewModel() {
 
         if (hayErrores) return null
 
-        val rolId = if (rol == "AGENTE") 2L else 1L
-        val rolNombre = if (rol == "AGENTE") "AGENTE" else "CLIENTE"
-
         return Usuario(
             rut = Validaciones.formatearRut(estado.rut),
             nombre = estado.nombre.trim(),
             correo = estado.correo.trim().lowercase(),
-            rolId = rolId,
-            rolNombre = rolNombre
+            rolId = 1L,
+            rolNombre = "CLIENTE"
         )
     }
 

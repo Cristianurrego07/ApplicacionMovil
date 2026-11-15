@@ -75,7 +75,7 @@ fun RecuperarContrasenaScreen(
                     Text(
                         text = "Recuperar contraseña",
                         style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onBackground
+                        color = MaterialTheme.colorScheme.secondary
                     )
                 },
                 navigationIcon = {
@@ -93,7 +93,7 @@ fun RecuperarContrasenaScreen(
                         Icon(
                             painter = painterResource(R.drawable.ic_arrow_back),
                             contentDescription = "Volver",
-                            tint = MaterialTheme.colorScheme.onBackground
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                 },
@@ -123,7 +123,7 @@ fun RecuperarContrasenaScreen(
                 when (paso) {
                     PasoRecuperacion.CORREO -> {
                         Text(
-                            text = "Ingresa tu correo electrónico para recibir un código de recuperación.",
+                            text = "Ingrese su correo electrónico para recibir un código de recuperación.",
                             style = MaterialTheme.typography.bodyLarge,
                             color = Color.Black
                         )
@@ -153,7 +153,7 @@ fun RecuperarContrasenaScreen(
 
                     PasoRecuperacion.CODIGO -> {
                         Text(
-                            text = "Ingresa el código que recibiste en tu correo.",
+                            text = "Ingrese el código que recibió en su correo.",
                             style = MaterialTheme.typography.bodyLarge,
                             color = Color.Black
                         )
@@ -183,7 +183,7 @@ fun RecuperarContrasenaScreen(
 
                     PasoRecuperacion.NUEVA_CONTRASENA -> {
                         Text(
-                            text = "Crea una nueva contraseña y escríbela nuevamente para confirmarla.",
+                            text = "Crea una nueva contraseña y escriba nuevamente para confirmarla.",
                             style = MaterialTheme.typography.bodyLarge,
                             color = Color.Black
                         )
@@ -221,7 +221,7 @@ fun RecuperarContrasenaScreen(
                             text = "Contraseña actualizada",
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.secondary,
+                            color = MaterialTheme.colorScheme.primary,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth()
                         )

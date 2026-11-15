@@ -79,10 +79,8 @@ fun LoginContent(
     onIngresar: () -> Unit,
     onCrearCuenta: () -> Unit
 ) {
-    val colores = MaterialTheme.colorScheme
-
     Scaffold(
-        containerColor = colores.background
+        containerColor = MaterialTheme.colorScheme.background
     ) { espacio ->
 
         Column(
@@ -115,13 +113,13 @@ fun LoginContent(
                     Text(
                         text = "Iniciar sesión",
                         style = MaterialTheme.typography.headlineMedium,
-                        color = colores.onBackground
+                        color = MaterialTheme.colorScheme.onBackground
                     )
 
                     Text(
                         text = "Ingresa tu correo o RUT y tu contraseña.",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = colores.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -131,7 +129,7 @@ fun LoginContent(
                     label = {
                         Text(
                             text = "Correo electrónico o RUT",
-                            color = colores.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -150,15 +148,15 @@ fun LoginContent(
                             painter = painterResource(R.drawable.ic_persona),
                             contentDescription = null,
                             modifier = Modifier.size(20.dp),
-                            tint = colores.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = colores.primary,
-                        unfocusedBorderColor = colores.outline,
-                        focusedLabelColor = colores.primary,
-                        unfocusedLabelColor = colores.onSurfaceVariant,
-                        cursorColor = colores.primary
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        cursorColor = MaterialTheme.colorScheme.primary
                     ),
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Text,
@@ -180,7 +178,7 @@ fun LoginContent(
                 ) {
                     Text(
                         text = "¿Olvidaste tu contraseña?",
-                        color = colores.secondary
+                        color = MaterialTheme.colorScheme.secondary
                     )
                 }
 
@@ -188,7 +186,7 @@ fun LoginContent(
                     Text(
                         text = mensaje,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = colores.error,
+                        color = MaterialTheme.colorScheme.error,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp)
@@ -201,15 +199,15 @@ fun LoginContent(
                         .fillMaxWidth()
                         .heightIn(min = 54.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = colores.primary,
-                        contentColor = colores.onPrimary
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 ) {
                     Text(
                         text = "Iniciar sesión",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = colores.onPrimary
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 }
 
@@ -221,19 +219,19 @@ fun LoginContent(
                     Text(
                         text = "¿No tienes cuenta?",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = colores.onSurface
+                        color = MaterialTheme.colorScheme.onSurface
                     )
 
                     TextButton(
                         onClick = onCrearCuenta,
                         colors = ButtonDefaults.textButtonColors(
-                            contentColor = colores.primary
+                            contentColor = MaterialTheme.colorScheme.primary
                         )
                     ) {
                         Text(
                             text = "Crear cuenta",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = colores.secondary
+                            color = MaterialTheme.colorScheme.secondary
                         )
                     }
                 }
