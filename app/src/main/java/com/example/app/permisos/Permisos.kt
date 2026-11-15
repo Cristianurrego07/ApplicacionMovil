@@ -9,27 +9,15 @@ import android.os.Build
 import android.provider.Settings
 import androidx.core.content.ContextCompat
 
-// =====================================================================
-//  NUEVO (Permisos) — Permisos.kt
-//  ---------------------------------------------------------------------
-//  Los 4 pasos para usar una API protegida por un permiso PELIGROSO:
-//
-//   1) DECLARAR   <uses-permission> en AndroidManifest.xml
-//   2) VERIFICAR  ¿ya está concedido?             -> tiene()   (este archivo)
-//   3) PEDIR      mostrar el diálogo del sistema   -> PerfilScreen (RequestPermission)
-//   4) REACCIONAR concedido -> usar la API  /  rechazado -> avisar y ofrecer Ajustes
-//
-//  Si el usuario rechaza 2 veces, Android NO vuelve a mostrar el diálogo:
-//  la única forma de concederlo es desde Ajustes -> abrirAjustes().
-// =====================================================================
-
 object Permisos {
 
-    // NUEVO (Cámara): nombre del permiso de cámara (es igual en todas las versiones)
+    // Permiso para usar la cámara
     val CAMARA: String = Manifest.permission.CAMERA
 
-    // NUEVO (Galería): el permiso para leer fotos CAMBIÓ en Android 13 (API 33).
-    // Build.VERSION.SDK_INT = versión de Android del teléfono donde corre la app.
+    // Permiso para mostrar notificaciones.
+    val NOTIFICACIONES: String = Manifest.permission.POST_NOTIFICATIONS
+
+    // El permiso para leer imágenes depende de la versión de Android.
     val IMAGENES: String =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             Manifest.permission.READ_MEDIA_IMAGES
@@ -37,25 +25,50 @@ object Permisos {
             Manifest.permission.READ_EXTERNAL_STORAGE
         }
 
-    fun tieneImagenes(context: Context): Boolean = tiene(context, IMAGENES) ||
-        (Build.VERSION.SDK_INT >= 34 && tiene(context, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED))
+    // Comprueba si la app tiene un permiso concedido.
+    fun tiene(
+        context: Context,
+        permiso: String
+    ): Boolean {
+        return ContextCompat.checkSelfPermission(
+            context,
+            permiso
+        ) == PackageManager.PERMISSION_GRANTED
+    }
 
-    fun permisosImagenes(): Array<String> = if (Build.VERSION.SDK_INT >= 34) {
-        arrayOf(IMAGENES, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
-    } else arrayOf(IMAGENES)
+    // Comprueba el acceso a imágenes.
+    fun tieneImagenes(context: Context): Boolean {
+        val accesoCompleto = tiene(context, IMAGENES)
 
-    // NUEVO (Permisos): PASO 2 -> VERIFICAR. Devuelve true si el usuario ya lo concedió.
-    // ContextCompat funciona igual en todas las versiones de Android.
-    fun tiene(context: Context, permiso: String): Boolean =
-        ContextCompat.checkSelfPermission(context, permiso) == PackageManager.PERMISSION_GRANTED
+        val accesoSeleccionado =
+            Build.VERSION.SDK_INT >= 34 &&
+                    tiene(
+                        context,
+                        Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
+                    )
 
-    // NUEVO (Permisos): abre la pantalla de Ajustes de ESTA app (Permisos, Almacenamiento...).
-    // "package:cl.duocuc.miregistro" le indica a Ajustes qué app mostrar.
+        return accesoCompleto || accesoSeleccionado
+    }
+
+    // Indica qué permisos de imágenes solicitar según la versión.
+    fun permisosImagenes(): Array<String> {
+        return if (Build.VERSION.SDK_INT >= 34) {
+            arrayOf(
+                IMAGENES,
+                Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
+            )
+        } else {
+            arrayOf(IMAGENES)
+        }
+    }
+
+    // Abre la pantalla de ajustes de esta aplicación.
     fun abrirAjustes(context: Context) {
         val intent = Intent(
             Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
             Uri.fromParts("package", context.packageName, null)
         ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
         context.startActivity(intent)
     }
 }

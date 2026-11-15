@@ -60,6 +60,7 @@ import com.example.app.data.ConvertidorImagen
 import com.example.app.model.Compromiso
 import com.example.app.model.Reporte
 import com.example.app.model.Usuario
+import com.example.app.ui.components.ConfiguracionNotificaciones
 import com.example.app.ui.components.CambiarContrasenaDialog
 import com.example.app.ui.components.ControlesFotoPerfil
 import com.example.app.ui.components.TarjetaEstadistica
@@ -467,7 +468,8 @@ fun PerfilScreen(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                    Text(text = "Mi perfil")
+                    Text(text = "Mi perfil",
+                        color = MaterialTheme.colorScheme.secondary)
                 },
                 navigationIcon = {
                     androidx.compose.foundation.layout.Box(
@@ -484,7 +486,7 @@ fun PerfilScreen(
                         Icon(
                             painter = painterResource(R.drawable.ic_arrow_back),
                             contentDescription = "Volver",
-                            tint = Secundario
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                 },
@@ -675,6 +677,12 @@ fun PerfilScreen(
                         ) {
                             Text(text = "Cambiar contraseña")
                         }
+                    }
+                }
+
+                if (usuario.rolNombre == "CLIENTE" || esAgente) {
+                    TarjetaSeccion(titulo = "Notificaciones") {
+                        ConfiguracionNotificaciones(usuarioId = usuario.id)
                     }
                 }
 
@@ -879,5 +887,31 @@ private fun PerfilPreview() {
                 TarjetasViewModel(SavedStateHandle())
             }
         )
+    }
+}
+
+@Preview(name = "Notificaciones - Cliente", showBackground = true)
+@Composable
+private fun NotificacionesClientePreview() {
+    AppThemePreview {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(text = "Perfil de cliente", style = MaterialTheme.typography.titleMedium)
+            TarjetaSeccion(titulo = "Notificaciones") {
+                ConfiguracionNotificaciones(usuarioId = 1L)
+            }
+        }
+    }
+}
+
+@Preview(name = "Notificaciones - Agente", showBackground = true)
+@Composable
+private fun NotificacionesAgentePreview() {
+    AppThemePreview {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(text = "Perfil de agente", style = MaterialTheme.typography.titleMedium)
+            TarjetaSeccion(titulo = "Notificaciones") {
+                ConfiguracionNotificaciones(usuarioId = 2L)
+            }
+        }
     }
 }

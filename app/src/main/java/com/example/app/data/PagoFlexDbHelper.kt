@@ -19,7 +19,7 @@ class PagoFlexDbHelper(context: Context) :
 
     companion object {
         private const val NOMBRE_BD = "PagoFlex.db"
-        private const val VERSION_BD = 15
+        private const val VERSION_BD = 17
         private const val TABLA_ROLES = "roles"
         private const val TABLA_USUARIOS = "usuarios"
         private const val TABLA_SERVICIOS = "servicios"
@@ -130,21 +130,21 @@ class PagoFlexDbHelper(context: Context) :
         private const val SQL_PRECARGAR_COMPROMISOS_CLIENTE =
             "INSERT OR IGNORE INTO $TABLA_COMPROMISOS " +
                     "($FOLIO, $ID_USUARIO, $NOMBRE_EMPRESA, $CONCEPTO, $MONTO, $VENCIMIENTO, $ESTADO, $RECARGO) VALUES " +
-                    "('PF-UNI-001', 1, 'Duoc Uc', 'Mensualidad', 356000, '2026-10-25', 'Pendiente', 7000), " +
-                    "('PF-LUZ-001', 1, 'Enel', 'Luz', 28000, '2026-10-20', 'Pendiente', 1100), " +
-                    "('PF-COND-001', 1, 'Condominio', 'Gasto común', 45000, '2026-10-28', 'Pendiente', 3000), " +
-                    "('PF-AGUA-001', 1, 'Aguas Andinas', 'Agua', 35000, '2026-10-29', 'Pendiente', 2000)"
+                    "('PF-UNI-001', 1, 'Duoc Uc', 'Mensualidad', 356000, '2026-11-19', 'Pendiente', 7000), " +
+                    "('PF-LUZ-001', 1, 'Enel', 'Luz', 28000, '2026-11-25', 'Pendiente', 1100), " +
+                    "('PF-COND-001', 1, 'Condominio', 'Gasto común', 45000, '2026-12-10', 'Pendiente', 3000), " +
+                    "('PF-AGUA-001', 1, 'Aguas Andinas', 'Agua', 35000, '2026-12-20', 'Pendiente', 2000)"
 
         private const val SQL_MIGRAR_COMPROMISOS_CLIENTE =
             "INSERT OR IGNORE INTO $TABLA_COMPROMISOS " +
                     "($FOLIO, $ID_USUARIO, $NOMBRE_EMPRESA, $CONCEPTO, $MONTO, $VENCIMIENTO, $ESTADO, $RECARGO) " +
-                    "SELECT 'PF-UNI-001', $ID_USUARIO, 'Duoc Uc', 'Mensualidad', 356000, '2026-10-25', 'Pendiente', 7000 " +
+                    "SELECT 'PF-UNI-001', $ID_USUARIO, 'Duoc Uc', 'Mensualidad', 356000, '2026-11-19', 'Pendiente', 7000 " +
                     "FROM $TABLA_USUARIOS WHERE $RUT = '20.435.214-5' " +
-                    "UNION ALL SELECT 'PF-LUZ-001', $ID_USUARIO, 'Enel', 'Luz', 28000, '2026-10-20', 'Pendiente', 1100 " +
+                    "UNION ALL SELECT 'PF-LUZ-001', $ID_USUARIO, 'Enel', 'Luz', 28000, '2026-11-25', 'Pendiente', 1100 " +
                     "FROM $TABLA_USUARIOS WHERE $RUT = '20.435.214-5' " +
-                    "UNION ALL SELECT 'PF-COND-001', $ID_USUARIO, 'Condominio', 'Gasto común', 45000, '2026-10-28', 'Pendiente', 3000 " +
+                    "UNION ALL SELECT 'PF-COND-001', $ID_USUARIO, 'Condominio', 'Gasto común', 45000, '2026-12-10', 'Pendiente', 3000 " +
                     "FROM $TABLA_USUARIOS WHERE $RUT = '20.435.214-5' " +
-                    "UNION ALL SELECT 'PF-AGUA-001', $ID_USUARIO, 'Aguas Andinas', 'Agua', 35000, '2026-10-29', 'Pendiente', 2000 " +
+                    "UNION ALL SELECT 'PF-AGUA-001', $ID_USUARIO, 'Aguas Andinas', 'Agua', 35000, '2026-12-20', 'Pendiente', 2000 " +
                     "FROM $TABLA_USUARIOS WHERE $RUT = '20.435.214-5'"
 
         private const val SQL_SELECT_USUARIOS =
@@ -230,6 +230,41 @@ class PagoFlexDbHelper(context: Context) :
         if (oldVersion < 13) {
             db.execSQL("DELETE FROM $TABLA_USUARIOS WHERE $CORREO = 'miranda@empresa.com'")
             db.execSQL("DELETE FROM $TABLA_ROLES WHERE $NOMBRE_ROL = 'EJECUTIVO'")
+        }
+        if (oldVersion < 16) {
+            // Actualiza solo las fechas originales de los ejemplos de Sofía.
+            val ejemplos = listOf(
+                Triple("PF-UNI-001", "2026-10-25", "+7 days"),
+                Triple("PF-LUZ-001", "2026-10-20", "-7 days"),
+                Triple("PF-COND-001", "2026-10-28", "+14 days"),
+                Triple("PF-AGUA-001", "2026-10-29", "-3 days")
+            )
+            for ((folio, fechaOriginal, cambio) in ejemplos) {
+                db.execSQL(
+                    "UPDATE $TABLA_COMPROMISOS SET $VENCIMIENTO = date('now', 'localtime', ?), " +
+                        "$ESTADO = 'Pendiente' WHERE $FOLIO = ? AND $VENCIMIENTO = ? " +
+                        "AND $ESTADO IN ('Pendiente', 'Vencido') AND $ID_USUARIO IN " +
+                        "(SELECT $ID_USUARIO FROM $TABLA_USUARIOS WHERE $RUT = ?)",
+                    arrayOf(cambio, folio, fechaOriginal, "20.435.214-5")
+                )
+            }
+        }
+        if (oldVersion < 17) {
+            // Fechas de ejemplo de Sofía, sin modificar compromisos pagados.
+            val fechas = listOf(
+                "PF-UNI-001" to "2026-11-19",
+                "PF-LUZ-001" to "2026-11-25",
+                "PF-COND-001" to "2026-12-10",
+                "PF-AGUA-001" to "2026-12-20"
+            )
+            for ((folio, fecha) in fechas) {
+                db.execSQL(
+                    "UPDATE $TABLA_COMPROMISOS SET $VENCIMIENTO = ?, $ESTADO = 'Pendiente' " +
+                        "WHERE $FOLIO = ? AND $ESTADO IN ('Pendiente', 'Vencido') " +
+                        "AND $ID_USUARIO IN (SELECT $ID_USUARIO FROM $TABLA_USUARIOS WHERE $RUT = ?)",
+                    arrayOf(fecha, folio, "20.435.214-5")
+                )
+            }
         }
     }
 
