@@ -1,26 +1,50 @@
 package com.example.app.ui.components
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.example.app.ui.theme.AppTheme
 
 @Composable
-fun EtiquetaEstado(estado: String, modifier: Modifier = Modifier) {
+fun EtiquetaEstado(
+    estado: String,
+    modifier: Modifier = Modifier
+) {
+    // Color de fondo según el estado
     val colorFondo = when (estado) {
-        "Pendiente", "Vencido" -> MaterialTheme.colorScheme.primaryContainer
-        "Pagado" -> MaterialTheme.colorScheme.secondaryContainer
-        else -> MaterialTheme.colorScheme.surfaceVariant
+        "Pendiente" ->
+            MaterialTheme.colorScheme.secondaryContainer
+
+        "Vencido" ->
+            MaterialTheme.colorScheme.errorContainer
+
+        "Pagado" ->
+            MaterialTheme.colorScheme.primaryContainer
+
+        else ->
+            MaterialTheme.colorScheme.surfaceVariant
     }
+
+    // Color del texto según el estado
     val colorTexto = when (estado) {
-        "Pendiente", "Vencido" -> MaterialTheme.colorScheme.onPrimaryContainer
-        "Pagado" -> MaterialTheme.colorScheme.onSecondaryContainer
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
+        "Pendiente" ->
+            MaterialTheme.colorScheme.onSecondaryContainer
+
+        "Vencido" ->
+            MaterialTheme.colorScheme.onErrorContainer
+
+        "Pagado" ->
+            MaterialTheme.colorScheme.onPrimaryContainer
+
+        else ->
+            MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     Surface(
@@ -29,14 +53,31 @@ fun EtiquetaEstado(estado: String, modifier: Modifier = Modifier) {
         contentColor = colorTexto,
         shape = MaterialTheme.shapes.small
     ) {
-        Text(estado, modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp))
+        Text(
+            text = estado,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(
+                horizontal = 10.dp,
+                vertical = 4.dp
+            )
+        )
     }
 }
 
-@Preview(showBackground = true)
+@Preview(
+    name = "Estados",
+    showBackground = true
+)
 @Composable
 private fun EtiquetaEstadoPreview() {
     AppTheme {
-        EtiquetaEstado("Pendiente", Modifier.padding(16.dp))
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            EtiquetaEstado(estado = "Pendiente")
+            EtiquetaEstado(estado = "Vencido")
+            EtiquetaEstado(estado = "Pagado")
+        }
     }
 }
