@@ -52,6 +52,7 @@ import com.example.app.R
 import com.example.app.model.Compromiso
 import com.example.app.model.Servicio
 import com.example.app.model.Usuario
+import com.example.app.ui.components.RecordatorioCompromiso
 import com.example.app.ui.components.TarjetaCompromiso
 import com.example.app.ui.theme.AppThemePreview
 import com.example.app.ui.theme.PagoFlexGreen
@@ -71,6 +72,7 @@ fun InicioScreen(
     onVolver: () -> Unit,
     onVerDetalle: (String) -> Unit,
     onVerPerfil: () -> Unit,
+    onVerCompromisos: () -> Unit,
     onAgregarServicio: () -> Unit,
     onEliminarServicios: () -> Unit,
     onVerHistorial: () -> Unit,
@@ -108,6 +110,17 @@ fun InicioScreen(
                 )
 
                 HorizontalDivider()
+
+                NavigationDrawerItem(
+                    label = { Text(text = "Mis compromisos") },
+                    selected = false,
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            onVerCompromisos()
+                        }
+                    }
+                )
 
                 NavigationDrawerItem(
                     label = {
@@ -249,7 +262,7 @@ fun InicioScreen(
                             Icon(
                                 painter = painterResource(R.drawable.ic_menu),
                                 contentDescription = null,
-                                tint = Secundario,
+                                tint = Primario,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -284,7 +297,7 @@ fun InicioScreen(
                         Text(
                             text = "Aquí tienes un resumen de tus pagos",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.secondary
                         )
                     }
                 }
@@ -303,13 +316,13 @@ fun InicioScreen(
                         ) {
                             Text(
                                 text = "Total pendiente",
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.bodyLarge,
                                 color = Color.White
                             )
 
                             Text(
                                 text = formatearMonto(totalPendiente),
-                                style = MaterialTheme.typography.headlineSmall,
+                                style = MaterialTheme.typography.headlineLarge,
                                 color = Color.White
                             )
 
@@ -320,7 +333,7 @@ fun InicioScreen(
                                 Text(
                                     text = "Próximo vencimiento",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color.Black,
+                                    color = MaterialTheme.colorScheme.secondary,
                                     modifier = Modifier.padding(
                                         horizontal = 8.dp,
                                         vertical = 4.dp
@@ -362,10 +375,16 @@ fun InicioScreen(
                             compromiso = compromiso,
                             alPresionar = {
                                 onVerDetalle(compromiso.folio)
+                            },
+                            recordatorio = {
+                                if (compromiso.estado == "Pendiente" || compromiso.estado == "Vencido") {
+                                    RecordatorioCompromiso(compromiso)
+                                }
                             }
                         )
                     }
                 }
+
             }
         }
     }
@@ -418,22 +437,53 @@ private fun InicioPreview() {
             rolNombre = "CLIENTE"
         )
 
+        // El preview usa los mismos ejemplos y fechas de la base de datos.
+        val hoy = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(java.util.Date())
+
+        fun estadoSegunFecha(fecha: String): String {
+            return if (fecha < hoy) "Vencido" else "Pendiente"
+        }
+
         val compromisos = listOf(
             Compromiso(
-                folio = "PF-001",
+                folio = "PF-UNI-001",
                 empresa = "Duoc Uc",
                 usuario = usuario,
                 concepto = "Mensualidad",
                 monto = 356000,
-                vencimiento = "2026-10-25"
+                vencimiento = "2026-11-19",
+                estado = estadoSegunFecha("2026-11-19"),
+                recargo = 7000
             ),
             Compromiso(
-                folio = "PF-002",
+                folio = "PF-LUZ-001",
                 empresa = "Enel",
                 usuario = usuario,
-                concepto = "Cuenta de luz",
+                concepto = "Luz",
                 monto = 28000,
-                vencimiento = "2026-10-20"
+                vencimiento = "2026-11-25",
+                estado = estadoSegunFecha("2026-11-25"),
+                recargo = 1100
+            ),
+            Compromiso(
+                folio = "PF-COND-001",
+                empresa = "Condominio",
+                usuario = usuario,
+                concepto = "Gasto común",
+                monto = 45000,
+                vencimiento = "2026-12-10",
+                estado = estadoSegunFecha("2026-12-10"),
+                recargo = 3000
+            ),
+            Compromiso(
+                folio = "PF-AGUA-001",
+                empresa = "Aguas Andinas",
+                usuario = usuario,
+                concepto = "Agua",
+                monto = 35000,
+                vencimiento = "2026-12-20",
+                estado = estadoSegunFecha("2026-12-20"),
+                recargo = 2000
             )
         )
 
@@ -453,6 +503,7 @@ private fun InicioPreview() {
             onVolver = {},
             onVerDetalle = {},
             onVerPerfil = {},
+            onVerCompromisos = {},
             onAgregarServicio = {},
             onEliminarServicios = {},
             onVerHistorial = {},
