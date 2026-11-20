@@ -15,6 +15,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.app.ui.screens.AgenteScreen
+import com.example.app.ui.screens.EjecutivoScreen
 import com.example.app.ui.screens.AgregarServicioScreen
 import com.example.app.ui.screens.ComprobanteScreen
 import com.example.app.ui.screens.DetalleScreen
@@ -47,7 +48,7 @@ fun AppNavegacion() {
         pagoFlexViewModel.recuperarSesion()
     }
 
-    fun cargarDatosUsuario(usuarioId: Long) {
+    fun cargarDatosUsuario(usuarioId: Long, rolNombre: String? = null) {
         pagoFlexViewModel.cargarReportes(
             pagoFlexViewModel.listarReportes()
         )
@@ -56,8 +57,10 @@ fun AppNavegacion() {
             pagoFlexViewModel.listarServicios(usuarioId)
         )
 
+        // Ejecutivo ve todos los compromisos de la empresa; los demás solo los propios
+        val esEjecutivo = rolNombre?.equals("EJECUTIVO", ignoreCase = true) == true
         pagoFlexViewModel.cargarCompromisos(
-            pagoFlexViewModel.listarCompromisos(usuarioId)
+            pagoFlexViewModel.listarCompromisos(if (esEjecutivo) null else usuarioId)
         )
     }
 
@@ -65,7 +68,7 @@ fun AppNavegacion() {
     LaunchedEffect(usuarioGuardado) {
         usuarioGuardado?.let { usuario ->
             pagoFlexViewModel.iniciarSesion(usuario)
-            cargarDatosUsuario(usuario.id)
+            cargarDatosUsuario(usuario.id, usuario.rolNombre)
 
             navController.navigate(rutaParaRol(usuario.rolNombre)) {
                 popUpTo(Ruta.Login.ruta) {
@@ -87,7 +90,7 @@ fun AppNavegacion() {
                 onLoginExitoso = { usuario ->
                     pagoFlexViewModel.guardarSesion(usuario.id)
                     pagoFlexViewModel.iniciarSesion(usuario)
-                    cargarDatosUsuario(usuario.id)
+                    cargarDatosUsuario(usuario.id, usuario.rolNombre)
 
                     navController.navigate(rutaParaRol(usuario.rolNombre)) {
                         popUpTo(Ruta.Login.ruta) {
@@ -153,7 +156,7 @@ fun AppNavegacion() {
                 onRegistroExitoso = { usuario ->
                     pagoFlexViewModel.guardarSesion(usuario.id)
                     pagoFlexViewModel.iniciarSesion(usuario)
-                    cargarDatosUsuario(usuario.id)
+                    cargarDatosUsuario(usuario.id, usuario.rolNombre)
 
                     navController.navigate(rutaParaRol(usuario.rolNombre)) {
                         popUpTo(Ruta.Login.ruta) {
@@ -569,14 +572,39 @@ fun AppNavegacion() {
                 }
             )
         }
+
+        // Pantalla del Ejecutivo de empresa
+        composable(Ruta.Ejecutivo.ruta) {
+            EjecutivoScreen(
+                usuario = usuarioActual,
+                compromisos = compromisos,
+                onCerrarSesion = {
+                    pagoFlexViewModel.cerrarSesion()
+                    navController.navigate(Ruta.Login.ruta) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onVerDetalle = { folio ->
+                    navController.navigate(Ruta.Detalle.crear(folio))
+                },
+                onVerPerfil = {
+                    navController.navigate(Ruta.Perfil.ruta)
+                },
+                onRegistrarCompromiso = {
+                    // Por ahora redirige a agregar servicio / formulario; se puede ampliar con pantalla específica de Main
+                    navController.navigate(Ruta.AgregarServicio.ruta)
+                }
+            )
+        }
     }
 }
 
 // Decide la pantalla inicial según el rol de la cuenta.
 private fun rutaParaRol(rol: String): String {
-    return when (rol) {
-        "CLIENTE" -> Ruta.Usuario.ruta
+    return when (rol.uppercase()) {
+        "CLIENTE", "USUARIO_FINAL" -> Ruta.Usuario.ruta
         "AGENTE" -> Ruta.Agente.ruta
+        "EJECUTIVO" -> Ruta.Ejecutivo.ruta
         else -> Ruta.Login.ruta
     }
 }
