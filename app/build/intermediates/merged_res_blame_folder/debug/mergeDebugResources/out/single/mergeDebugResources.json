@@ -1,0 +1,66 @@
+[
+    {
+        "merged": "com.example.app-debug-48:/drawable_ic_menu.xml.flat",
+        "source": "com.example.app-main-50:/drawable/ic_menu.xml"
+    },
+    {
+        "merged": "com.example.app-debug-48:/xml_backup_rules.xml.flat",
+        "source": "com.example.app-main-50:/xml/backup_rules.xml"
+    },
+    {
+        "merged": "com.example.app-debug-48:/drawable-nodpi_logo_pagoflex.png.flat",
+        "source": "com.example.app-main-50:/drawable-nodpi/logo_pagoflex.png"
+    },
+    {
+        "merged": "com.example.app-debug-48:/drawable_ic_edit.xml.flat",
+        "source": "com.example.app-main-50:/drawable/ic_edit.xml"
+    },
+    {
+        "merged": "com.example.app-debug-48:/drawable_ic_ojo.xml.flat",
+        "source": "com.example.app-main-50:/drawable/ic_ojo.xml"
+    },
+    {
+        "merged": "com.example.app-debug-48:/drawable_ic_empresa.xml.flat",
+        "source": "com.example.app-main-50:/drawable/ic_empresa.xml"
+    },
+    {
+        "merged": "com.example.app-debug-48:/drawable_ic_camara.xml.flat",
+        "source": "com.example.app-main-50:/drawable/ic_camara.xml"
+    },
+    {
+        "merged": "com.example.app-debug-48:/drawable_ic_notificacion.xml.flat",
+        "source": "com.example.app-main-50:/drawable/ic_notificacion.xml"
+    },
+    {
+        "merged": "com.example.app-debug-48:/drawable_ic_arrow_back.xml.flat",
+        "source": "com.example.app-main-50:/drawable/ic_arrow_back.xml"
+    },
+    {
+        "merged": "com.example.app-debug-48:/drawable_ic_galeria.xml.flat",
+        "source": "com.example.app-main-50:/drawable/ic_galeria.xml"
+    },
+    {
+        "merged": "com.example.app-debug-48:/xml_data_extraction_rules.xml.flat",
+        "source": "com.example.app-main-50:/xml/data_extraction_rules.xml"
+    },
+    {
+        "merged": "com.example.app-debug-48:/drawable_ic_ojo_tachado.xml.flat",
+        "source": "com.example.app-main-50:/drawable/ic_ojo_tachado.xml"
+    },
+    {
+        "merged": "com.example.app-debug-48:/drawable-nodpi_portada_perfil.jpg.flat",
+        "source": "com.example.app-main-50:/drawable-nodpi/portada_perfil.jpg"
+    },
+    {
+        "merged": "com.example.app-debug-48:/drawable_ic_correo.xml.flat",
+        "source": "com.example.app-main-50:/drawable/ic_correo.xml"
+    },
+    {
+        "merged": "com.example.app-debug-48:/drawable_ic_persona.xml.flat",
+        "source": "com.example.app-main-50:/drawable/ic_persona.xml"
+    },
+    {
+        "merged": "com.example.app-debug-48:/drawable_ic_candado.xml.flat",
+        "source": "com.example.app-main-50:/drawable/ic_candado.xml"
+    }
+]

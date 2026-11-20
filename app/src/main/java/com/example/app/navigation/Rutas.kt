@@ -23,6 +23,9 @@ sealed class Ruta(val ruta: String) {
     // Pantalla del agente
     data object Agente : Ruta("agente")
 
+    // Pantalla del ejecutivo de empresa
+    data object Ejecutivo : Ruta("ejecutivo")
+
     // Detalle de un compromiso
     data object Detalle : Ruta("detalle/{folio}") {
         fun crear(folio: String): String {

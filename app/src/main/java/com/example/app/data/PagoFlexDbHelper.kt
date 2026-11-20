@@ -19,7 +19,7 @@ class PagoFlexDbHelper(context: Context) :
 
     companion object {
         private const val NOMBRE_BD = "PagoFlex.db"
-        private const val VERSION_BD = 17
+        private const val VERSION_BD = 18
         private const val TABLA_ROLES = "roles"
         private const val TABLA_USUARIOS = "usuarios"
         private const val TABLA_SERVICIOS = "servicios"
@@ -123,7 +123,8 @@ class PagoFlexDbHelper(context: Context) :
         private const val SQL_PRECARGAR_USUARIOS =
             "INSERT INTO $TABLA_USUARIOS ($RUT, $NOMBRE, $CORREO, $CONTRASENA, $ID_ROL) VALUES " +
                     "('20.435.214-5', 'Sofia Perez', 'sofia@gmail.com', 'cli123', 1), " +
-                    "('10.625.244-K', 'Matias Sanchez', 'matias@pagoflex.com', 'age123', 2)"
+                    "('10.625.244-K', 'Matias Sanchez', 'matias@pagoflex.com', 'age123', 2), " +
+                    "('12.345.678-9', 'Carla Ejecutivo', 'carla@empresa.com', 'eje123', 3)"
 
 
 
@@ -231,6 +232,22 @@ class PagoFlexDbHelper(context: Context) :
             db.execSQL("DELETE FROM $TABLA_USUARIOS WHERE $CORREO = 'miranda@empresa.com'")
             db.execSQL("DELETE FROM $TABLA_ROLES WHERE $NOMBRE_ROL = 'EJECUTIVO'")
         }
+        if (oldVersion < 18) {
+            // Asegura que el rol EJECUTIVO y el usuario demo existan (arreglo desde Main)
+            db.execSQL(
+                "INSERT OR IGNORE INTO $TABLA_ROLES ($ID_ROL, $NOMBRE_ROL) VALUES (3, 'EJECUTIVO')"
+            )
+            db.execSQL(
+                "INSERT OR IGNORE INTO $TABLA_USUARIOS ($RUT, $NOMBRE, $CORREO, $CONTRASENA, $ID_ROL) " +
+                "VALUES ('12.345.678-9', 'Carla Ejecutivo', 'carla@empresa.com', 'eje123', 3)"
+            )
+            // Compromisos de ejemplo visibles para el ejecutivo (cobranza de empresa)
+            db.execSQL(
+                "INSERT OR IGNORE INTO $TABLA_COMPROMISOS " +
+                "($FOLIO, $ID_USUARIO, $NOMBRE_EMPRESA, $CONCEPTO, $MONTO, $VENCIMIENTO, $ESTADO, $RECARGO) VALUES " +
+                "('PF-EMP-001', 1, 'Duoc Uc', 'Mensualidad empresa', 890000, date('now', '+10 days'), 'Pendiente', 15000)"
+            )
+        }
         if (oldVersion < 16) {
             // Actualiza solo las fechas originales de los ejemplos de Sofía.
             val ejemplos = listOf(
@@ -279,8 +296,10 @@ class PagoFlexDbHelper(context: Context) :
         val filtro = if (idUsuario == null) "" else "WHERE c.$ID_USUARIO = ?"
         val argumentos = if (idUsuario == null) null else arrayOf(idUsuario.toString())
         readableDatabase.rawQuery(
-            "SELECT c.*, u.$RUT, u.$NOMBRE, u.$CORREO, u.$ID_ROL " +
-                    "FROM $TABLA_COMPROMISOS c INNER JOIN $TABLA_USUARIOS u ON c.$ID_USUARIO = u.$ID_USUARIO " +
+            "SELECT c.*, u.$RUT, u.$NOMBRE, u.$CORREO, u.$ID_ROL, r.$NOMBRE_ROL AS $NOMBRE_ROL " +
+                    "FROM $TABLA_COMPROMISOS c " +
+                    "INNER JOIN $TABLA_USUARIOS u ON c.$ID_USUARIO = u.$ID_USUARIO " +
+                    "INNER JOIN $TABLA_ROLES r ON u.$ID_ROL = r.$ID_ROL " +
                     "$filtro ORDER BY c.$VENCIMIENTO, c.$ID_COMPROMISO",
             argumentos
         ).use { cursor ->
@@ -301,7 +320,7 @@ class PagoFlexDbHelper(context: Context) :
                             nombre = cursor.getString(cursor.getColumnIndexOrThrow(NOMBRE)),
                             correo = cursor.getString(cursor.getColumnIndexOrThrow(CORREO)),
                             rolId = cursor.getLong(cursor.getColumnIndexOrThrow(ID_ROL)),
-                            rolNombre = "CLIENTE"
+                            rolNombre = cursor.getString(cursor.getColumnIndexOrThrow(NOMBRE_ROL))
                         ),
                         concepto = cursor.getString(cursor.getColumnIndexOrThrow(CONCEPTO)),
                         monto = cursor.getInt(cursor.getColumnIndexOrThrow(MONTO)),
