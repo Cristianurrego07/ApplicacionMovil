@@ -92,10 +92,18 @@ class FormularioViewModel : ViewModel() {
     fun onRegistrar(): Usuario? {
         val estado = _uiState.value
 
-        val errorNombre = if (estado.nombre.isBlank()) {
-            "El nombre es obligatorio"
-        } else {
-            null
+        val errorNombre = when {
+            estado.nombre.isBlank() ->
+                "El nombre es obligatorio"
+
+            estado.nombre.any { it.isDigit() } ->
+                "El nombre no puede contener números"
+
+            !Validaciones.nombreValido(estado.nombre) ->
+                "El nombre solo debe contener letras"
+
+            else ->
+                null
         }
 
         val errorRut = if (!Validaciones.rutValido(estado.rut)) {

@@ -100,4 +100,12 @@ object Validaciones {
                 } &&
                 dominio.last().length >= 2
     }
+
+    // Comprueba que el nombre solo contenga letras, espacios y acentos (sin números).
+    fun nombreValido(valor: String): Boolean {
+        val nombre = valor.trim()
+        if (nombre.isBlank()) return false
+        val regex = Regex("^[A-Za-zÁÉÍÓÚáéíóúÑñ\\s]+$")
+        return nombre.matches(regex)
+    }
 }
