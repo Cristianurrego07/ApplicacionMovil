@@ -49,7 +49,6 @@ fun HistorialPagosScreen(
     comprobantes: List<Comprobante>,
     compromisos: List<Compromiso>,
     onVolver: () -> Unit,
-    onVerComprobante: (String) -> Unit,
     onVerDetalle: (String) -> Unit
 ) {
     var estadoSeleccionado by rememberSaveable { mutableStateOf("Todos") }
@@ -95,7 +94,7 @@ fun HistorialPagosScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            val estados = listOf("Todos", "Pendiente", "Vencido", "En revisión", "Pagado", "Anulado")
+            val estados = listOf("Todos", "Pagado", "Pendiente", "Vencido", "En revisión", "Anulado")
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -121,10 +120,7 @@ fun HistorialPagosScreen(
                     items(compromisosFiltrados, key = { it.folio }) { compromiso ->
                         val comprobante = comprobantes.find { it.folioCompromiso == compromiso.folio }
                         Card(
-                            onClick = {
-                                if (comprobante != null) onVerComprobante(compromiso.folio)
-                                else onVerDetalle(compromiso.folio)
-                            },
+                            onClick = { onVerDetalle(compromiso.folio) },
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.surface
@@ -202,7 +198,6 @@ private fun HistorialPagosPreview() {
                 )
             ),
             onVolver = {},
-            onVerComprobante = {},
             onVerDetalle = {}
         )
     }
@@ -216,7 +211,6 @@ private fun HistorialPagosVacioPreview() {
             comprobantes = emptyList(),
             compromisos = emptyList(),
             onVolver = {},
-            onVerComprobante = {},
             onVerDetalle = {}
         )
     }

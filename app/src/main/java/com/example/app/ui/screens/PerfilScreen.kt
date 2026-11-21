@@ -95,7 +95,6 @@ fun PerfilScreen(
     )
 
     val perfilEstado by perfilViewModel.uiState.collectAsStateWithLifecycle()
-    val tarjetas by tarjetasViewModel.tarjetas.collectAsStateWithLifecycle()
 
     var editando by rememberSaveable(usuario.id) {
         mutableStateOf(false)
@@ -105,44 +104,9 @@ fun PerfilScreen(
         mutableStateOf(false)
     }
 
-    var mostrandoDialogoTarjeta by rememberSaveable {
-        mutableStateOf(false)
-    }
-
-    var numTarjeta by remember(usuario.id) {
-        mutableStateOf("")
-    }
-
-    var titTarjeta by rememberSaveable(usuario.nombre) {
-        mutableStateOf(usuario.nombre)
-    }
-
-    var vencTarjeta by rememberSaveable {
-        mutableStateOf("")
-    }
-
-    var cvvTarjeta by remember(usuario.id) {
-        mutableStateOf("")
-    }
-
-    var tipoTarjeta by rememberSaveable {
-        mutableStateOf("Débito")
-    }
-
-    var errorTarjeta by rememberSaveable {
-        mutableStateOf<String?>(null)
-    }
-
     fun editarPerfil() {
         perfilViewModel.cargarUsuario(usuario)
         editando = true
-    }
-
-    fun cerrarTarjeta() {
-        mostrandoDialogoTarjeta = false
-        numTarjeta = ""
-        cvvTarjeta = ""
-        errorTarjeta = null
     }
 
     val foto = remember(usuario.avatar) {
@@ -152,6 +116,7 @@ fun PerfilScreen(
     }
 
     val esAgente = usuario.rolNombre == "AGENTE"
+    val esEjecutivo = usuario.rolNombre == "EJECUTIVO"
 
     val pendientes = compromisos.count {
         it.estado == "Pendiente" || it.estado == "Vencido"
@@ -169,7 +134,6 @@ fun PerfilScreen(
         .mapNotNull { it.firstOrNull()?.uppercase() }
         .joinToString("")
 
-    // Diálogo para cambiar contraseña
     if (cambiandoContrasena) {
         CambiarContrasenaDialog(
             usuarioId = usuario.id,
@@ -187,138 +151,6 @@ fun PerfilScreen(
         )
     }
 
-    // Diálogo para incorporar una tarjeta
-    if (mostrandoDialogoTarjeta) {
-        AlertDialog(
-            onDismissRequest = {
-                cerrarTarjeta()
-            },
-            title = {
-                Text(text = "Incorporar tarjeta de crédito o débito")
-            },
-            text = {
-                Column(
-                    modifier = Modifier
-                        .heightIn(max = 420.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedTextField(
-                        value = numTarjeta,
-                        onValueChange = { numTarjeta = it },
-                        label = { Text("Número de tarjeta") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number
-                        )
-                    )
-
-                    OutlinedTextField(
-                        value = titTarjeta,
-                        onValueChange = { titTarjeta = it },
-                        label = { Text("Nombre del titular") },
-                        singleLine = true
-                    )
-
-                    OutlinedTextField(
-                        value = vencTarjeta,
-                        onValueChange = { vencTarjeta = it },
-                        label = { Text("Vencimiento (MM/AA)") },
-                        singleLine = true
-                    )
-
-                    OutlinedTextField(
-                        value = cvvTarjeta,
-                        onValueChange = { cvvTarjeta = it },
-                        label = { Text("CVV") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number
-                        )
-                    )
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(text = "Tipo:")
-
-                        TextButton(
-                            onClick = { tipoTarjeta = "Débito" }
-                        ) {
-                            Text(
-                                text = if (tipoTarjeta == "Débito") {
-                                    "[Débito]"
-                                } else {
-                                    "Débito"
-                                }
-                            )
-                        }
-
-                        TextButton(
-                            onClick = { tipoTarjeta = "Crédito" }
-                        ) {
-                            Text(
-                                text = if (tipoTarjeta == "Crédito") {
-                                    "[Crédito]"
-                                } else {
-                                    "Crédito"
-                                }
-                            )
-                        }
-                    }
-
-                    errorTarjeta?.let { mensaje ->
-                        Text(
-                            text = mensaje,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (
-                            numTarjeta.isBlank() ||
-                            numTarjeta.length < 12 ||
-                            vencTarjeta.isBlank() ||
-                            cvvTarjeta.isBlank()
-                        ) {
-                            errorTarjeta =
-                                "Completa los datos correctamente (número de al menos 12 dígitos)."
-                        } else {
-                            tarjetasViewModel.agregar(
-                                numTarjeta.trim(),
-                                titTarjeta.trim(),
-                                vencTarjeta.trim(),
-                                tipoTarjeta
-                            )
-
-                            cerrarTarjeta()
-
-                            scope.launch {
-                                snackbar.showSnackbar(
-                                    "Tarjeta $tipoTarjeta incorporada correctamente"
-                                )
-                            }
-                        }
-                    }
-                ) {
-                    Text(text = "Incorporar")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { cerrarTarjeta() }
-                ) {
-                    Text(text = "Cancelar")
-                }
-            }
-        )
-    }
-
-    // Diálogo para editar los datos del perfil
     if (editando) {
         AlertDialog(
             onDismissRequest = {
@@ -502,7 +334,6 @@ fun PerfilScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Portada y avatar
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -551,7 +382,7 @@ fun PerfilScreen(
 
             Spacer(modifier = Modifier.height(52.dp))
 
-            if (usuario.rolNombre == "CLIENTE" || esAgente) {
+            if (usuario.rolNombre == "CLIENTE" || esAgente || esEjecutivo) {
                 ControlesFotoPerfil(
                     snackbar = snackbar,
                     onGuardarFoto = onGuardarFoto
@@ -566,7 +397,11 @@ fun PerfilScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (esAgente) "Agente" else "Cliente",
+                            text = when {
+                                esAgente -> "Agente"
+                                esEjecutivo -> "Ejecutivo"
+                                else -> "Cliente"
+                            },
                             modifier = Modifier.weight(1f),
                             style = MaterialTheme.typography.titleSmall
                         )
@@ -614,7 +449,6 @@ fun PerfilScreen(
                 )
             }
 
-            // Estadísticas
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -642,7 +476,7 @@ fun PerfilScreen(
                 } else {
                     TarjetaEstadistica(
                         compromisos.size.toString(),
-                        "Servicios",
+                        if (esEjecutivo) "Cobros" else "Servicios",
                         Modifier.weight(1f)
                     )
 
@@ -666,7 +500,7 @@ fun PerfilScreen(
                     .padding(horizontal = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (usuario.rolNombre == "CLIENTE" || esAgente) {
+                if (usuario.rolNombre == "CLIENTE" || esAgente || esEjecutivo) {
                     TarjetaSeccion(
                         titulo = "Seguridad y contraseña"
                     ) {
@@ -680,65 +514,9 @@ fun PerfilScreen(
                     }
                 }
 
-                if (usuario.rolNombre == "CLIENTE" || esAgente) {
+                if (usuario.rolNombre == "CLIENTE" || esAgente || usuario.rolNombre == "EJECUTIVO") {
                     TarjetaSeccion(titulo = "Notificaciones") {
                         ConfiguracionNotificaciones(usuarioId = usuario.id)
-                    }
-                }
-
-                if (usuario.rolNombre == "CLIENTE") {
-                    TarjetaSeccion(
-                        titulo = "Tarjetas de crédito y débito"
-                    ) {
-                        if (tarjetas.isEmpty()) {
-                            Text(
-                                text = "No tienes tarjetas incorporadas.",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        } else {
-                            Column(
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                tarjetas.forEach { tarjeta ->
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = "${tarjeta.tipo}: •••• ${tarjeta.ultimosCuatro} (${tarjeta.vencimiento})",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            modifier = Modifier.weight(1f)
-                                        )
-
-                                        TextButton(
-                                            onClick = {
-                                                tarjetasViewModel.eliminar(tarjeta)
-                                            }
-                                        ) {
-                                            Text(
-                                                text = "Eliminar",
-                                                color = MaterialTheme.colorScheme.error
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        TextButton(
-                            onClick = {
-                                numTarjeta = ""
-                                titTarjeta = usuario.nombre
-                                vencTarjeta = ""
-                                cvvTarjeta = ""
-                                errorTarjeta = null
-                                mostrandoDialogoTarjeta = true
-                            }
-                        ) {
-                            Text(text = "+ Incorporar tarjeta de crédito o débito")
-                        }
                     }
                 }
 
@@ -749,17 +527,21 @@ fun PerfilScreen(
                     Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
-                        text = if (esAgente) {
-                            "Soy agente de atención y ayudo a resolver los reportes de PagoFlex."
-                        } else {
-                            "Soy cliente frecuente y me gusta pagar al día."
+                        text = when {
+                            esAgente -> "Soy agente de atención y ayudo a resolver los reportes de PagoFlex."
+                            esEjecutivo -> "Gestiono los compromisos y el seguimiento de la cobranza de mi empresa."
+                            else -> "Soy cliente frecuente y me gusta pagar al día."
                         },
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
 
                 TarjetaSeccion(
-                    titulo = if (esAgente) "Mi actividad" else "Mis compromisos",
+                    titulo = when {
+                        esAgente -> "Mi actividad"
+                        esEjecutivo -> "Compromisos de mi empresa"
+                        else -> "Mis compromisos"
+                    },
                     modifier = Modifier.heightIn(min = 120.dp)
                 ) {
                     Spacer(modifier = Modifier.height(8.dp))
@@ -913,5 +695,27 @@ private fun NotificacionesAgentePreview() {
                 ConfiguracionNotificaciones(usuarioId = 2L)
             }
         }
+    }
+}
+
+@Preview(name = "Perfil ejecutivo", showBackground = true, showSystemUi = true)
+@Composable
+private fun PerfilEjecutivoPreview() {
+    AppThemePreview {
+        val ejecutivo = Usuario(
+            id = 3, rut = "12.345.678-9", nombre = "Carla Ejecutivo",
+            correo = "carla@duocuc.cl", rolId = 3, rolNombre = "EJECUTIVO"
+        )
+        val cliente = Usuario(
+            id = 1, rut = "20.435.214-5", nombre = "Sofía Pérez",
+            correo = "sofia@gmail.com", rolId = 1, rolNombre = "CLIENTE"
+        )
+        PerfilScreen(
+            usuario = ejecutivo,
+            compromisos = listOf(Compromiso("PF-001", "Duoc Uc", cliente, "Mensualidad", 350000, "2026-12-10", "Pendiente")),
+            cantidadPagos = 0,
+            onVolver = {},
+            tarjetasViewModel = remember { TarjetasViewModel(SavedStateHandle()) }
+        )
     }
 }
