@@ -1,6 +1,8 @@
 package com.example.app.ui.screens
 
 import android.content.res.Configuration
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +16,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -45,6 +50,9 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.app.viewmodel.RespuestaReporteViewModel
 import com.example.app.model.Reporte
 import com.example.app.model.Usuario
 import com.example.app.ui.components.BotonPrincipal
@@ -70,7 +78,7 @@ fun AgenteScreen(
     onVerPerfil: () -> Unit,
     onVerHistorial: () -> Unit,
     onCerrarSesion: () -> Unit,
-    onCambiarEstado: (Reporte, String) -> Boolean
+    onCambiarEstado: (Reporte, String, String) -> Boolean
 ) {
     var pestanaSeleccionada by remember {
         mutableIntStateOf(0)
@@ -78,6 +86,49 @@ fun AgenteScreen(
 
     var errorAccion by remember {
         mutableStateOf<String?>(null)
+    }
+
+    var reporteAResolver by remember { mutableStateOf<Reporte?>(null) }
+    var rechazar by remember { mutableStateOf(false) }
+    val respuestaViewModel: RespuestaReporteViewModel = viewModel()
+    val respuesta by respuestaViewModel.uiState.collectAsStateWithLifecycle()
+
+    reporteAResolver?.let { reporte ->
+        AlertDialog(
+            onDismissRequest = { reporteAResolver = null; respuestaViewModel.limpiar() },
+            title = { Text(if (rechazar) "Rechazar reporte" else "Responder reporte") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Al cerrar el reporte, el compromiso volverá a estar pendiente.")
+                    OutlinedTextField(
+                        value = respuesta.texto,
+                        onValueChange = respuestaViewModel::cambiarTexto,
+                        label = { Text(if (rechazar) "Motivo del rechazo" else "Solución") },
+                        isError = respuesta.error != null,
+                        supportingText = { respuesta.error?.let { Text(it) } }
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (respuestaViewModel.validar()) {
+                        val tipo = if (rechazar) "Rechazado" else "Solución"
+                        if (onCambiarEstado(reporte, "Pendiente", "$tipo: ${respuesta.texto.trim()}")) {
+                            reporteAResolver = null
+                            respuestaViewModel.limpiar()
+                            errorAccion = null
+                        } else {
+                            respuestaViewModel.mostrarError("No se pudo guardar la respuesta. Inténtalo nuevamente.")
+                        }
+                    }
+                }) { Text("Enviar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { reporteAResolver = null; respuestaViewModel.limpiar() }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -101,73 +152,69 @@ fun AgenteScreen(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                Text(
-                    text = buildAnnotatedString {
-                        withStyle(SpanStyle(color = Primario)) {
-                            append("Pago")
-                        }
-                        withStyle(SpanStyle(color = Secundario)) {
-                            append("Flex")
-                        }
-                    },
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(20.dp)
-                )
-
-                HorizontalDivider()
-
-                NavigationDrawerItem(
-                    label = {
-                        Text(text = "Ver reportes")
-                    },
-                    selected = false,
-                    onClick = {
-                        scope.launch {
-                            drawerState.close()
-                        }
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                ) {
+                    Row(modifier = Modifier.padding(start = 20.dp, top = 20.dp, end = 20.dp)) {
+                        Text("Pago", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
+                        Text("Flex", color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.titleLarge)
                     }
-                )
-
-                NavigationDrawerItem(
-                    label = {
-                        Text(text = "Mi perfil")
-                    },
-                    selected = false,
-                    onClick = {
-                        scope.launch {
-                            drawerState.close()
+                    Text(
+                        text = "Agente · ${usuario?.nombre ?: "Usuario"}",
+                        modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 16.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    HorizontalDivider()
+                    Text(
+                        text = "Reportes",
+                        modifier = Modifier.padding(start = 20.dp, top = 14.dp, bottom = 4.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    NavigationDrawerItem(
+                        label = { Text("Ver reportes") },
+                        selected = false,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        onClick = {
+                            scope.launch { drawerState.close() }
                         }
-                        onVerPerfil()
-                    }
-                )
-
-                NavigationDrawerItem(
-                    label = {
-                        Text(text = "Historial reportes")
-                    },
-                    selected = false,
-                    onClick = {
-                        scope.launch {
-                            drawerState.close()
+                    )
+                    NavigationDrawerItem(
+                        label = { Text("Historial de reportes") },
+                        selected = false,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onVerHistorial()
                         }
-                        onVerHistorial()
-                    }
-                )
-
-                HorizontalDivider()
-
-                NavigationDrawerItem(
-                    label = {
-                        Text(text = "Cerrar sesión")
-                    },
-                    selected = false,
-                    onClick = {
-                        scope.launch {
-                            drawerState.close()
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
+                    Text(
+                        text = "Cuenta",
+                        modifier = Modifier.padding(start = 20.dp, top = 14.dp, bottom = 4.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    NavigationDrawerItem(
+                        label = { Text("Mi perfil") },
+                        selected = false,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onVerPerfil()
                         }
-                        onCerrarSesion()
-                    }
-                )
+                    )
+                    NavigationDrawerItem(
+                        label = { Text("Cerrar sesión") },
+                        selected = false,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onCerrarSesion()
+                        }
+                    )
+                }
             }
         }
     ) {
@@ -237,7 +284,6 @@ fun AgenteScreen(
                     .fillMaxSize()
                     .padding(espacio)
             ) {
-                // Pestañas de estados de reportes
                 TabRow(
                     selectedTabIndex = pestanaSeleccionada
                 ) {
@@ -257,7 +303,6 @@ fun AgenteScreen(
                     }
                 }
 
-                // Lista de reportes
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
@@ -308,7 +353,8 @@ fun AgenteScreen(
                                                 errorAccion = if (
                                                     onCambiarEstado(
                                                         reporte,
-                                                        "En proceso"
+                                                        "En proceso",
+                                                        ""
                                                     )
                                                 ) {
                                                     null
@@ -323,41 +369,23 @@ fun AgenteScreen(
                                     "En proceso" -> {
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement =
-                                                Arrangement.spacedBy(8.dp),
-                                            verticalAlignment =
-                                                Alignment.CenterVertically
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                                         ) {
                                             BotonPrincipal(
-                                                texto = "Reactivar",
+                                                texto = "Responder",
                                                 onClick = {
-                                                    errorAccion = if (
-                                                        onCambiarEstado(
-                                                            reporte,
-                                                            "Pendiente"
-                                                        )
-                                                    ) {
-                                                        null
-                                                    } else {
-                                                        "No se pudo reactivar el compromiso."
-                                                    }
+                                                    respuestaViewModel.limpiar()
+                                                    rechazar = false
+                                                    reporteAResolver = reporte
                                                 },
                                                 modifier = Modifier.weight(1f)
                                             )
-
                                             BotonSecundario(
-                                                texto = "Anular",
+                                                texto = "Rechazar",
                                                 onClick = {
-                                                    errorAccion = if (
-                                                        onCambiarEstado(
-                                                            reporte,
-                                                            "Anulado"
-                                                        )
-                                                    ) {
-                                                        null
-                                                    } else {
-                                                        "No se pudo anular el compromiso."
-                                                    }
+                                                    respuestaViewModel.limpiar()
+                                                    rechazar = true
+                                                    reporteAResolver = reporte
                                                 },
                                                 modifier = Modifier.weight(1f)
                                             )
@@ -425,7 +453,7 @@ private fun AgentePreview() {
             onVerPerfil = {},
             onVerHistorial = {},
             onCerrarSesion = {},
-            onCambiarEstado = { _, _ -> true }
+            onCambiarEstado = { _, _, _ -> true }
         )
     }
 }

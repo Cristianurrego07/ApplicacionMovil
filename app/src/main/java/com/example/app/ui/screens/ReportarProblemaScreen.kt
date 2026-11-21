@@ -36,6 +36,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.app.R
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.app.viewmodel.ReporteFormularioViewModel
 import com.example.app.model.Compromiso
 import com.example.app.model.Usuario
 import com.example.app.ui.components.BotonPrincipal
@@ -56,7 +59,9 @@ fun ReportarProblemaScreen(
     var compromisoSeleccionado by remember { mutableStateOf<Compromiso?>(null) }
     var motivoSeleccionado by remember { mutableStateOf("Ya pagué por otro medio") }
     var comentario by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf<String?>(null) }
+    val formulario: ReporteFormularioViewModel = viewModel()
+    val estadoFormulario by formulario.uiState.collectAsStateWithLifecycle()
+    val error = estadoFormulario.error
     var mostrarConfirmacion by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -118,7 +123,7 @@ fun ReportarProblemaScreen(
                                 compromisoSeleccionado = compromiso
                                 motivoSeleccionado = "Ya pagué por otro medio"
                                 comentario = ""
-                                error = null
+                                formulario.limpiarError()
                             },
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -145,7 +150,7 @@ fun ReportarProblemaScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             RadioButton(
                                 selected = motivoSeleccionado == opcion,
-                                onClick = { motivoSeleccionado = opcion; error = null }
+                                onClick = { motivoSeleccionado = opcion; formulario.limpiarError() }
                             )
                             Text(text = opcion)
                         }
@@ -154,7 +159,7 @@ fun ReportarProblemaScreen(
                         CampoTexto(
                             valor = comentario,
                             etiqueta = "Describe el problema",
-                            alCambiar = { comentario = it; error = null },
+                            alCambiar = { comentario = it; formulario.limpiarError() },
                             error = error
                         )
                     } else {
@@ -166,19 +171,13 @@ fun ReportarProblemaScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    if (motivoSeleccionado == "Otro" && comentario.isBlank()) {
-                        error = "Escribe un comentario para explicar el problema."
-                    } else {
-                        val motivo = if (motivoSeleccionado == "Otro") {
-                            "Otro: ${comentario.trim()}"
-                        } else {
-                            motivoSeleccionado
-                        }
+                    val motivo = formulario.crearMotivo(motivoSeleccionado, comentario)
+                    if (motivo != null) {
                         if (onReportar(compromiso.folio, motivo)) {
                             compromisoSeleccionado = null
                             mostrarConfirmacion = true
                         } else {
-                            error = "No se pudo enviar el reporte. Inténtalo nuevamente."
+                            formulario.mostrarError("No se pudo enviar el reporte. Inténtalo nuevamente.")
                         }
                     }
                 }) { Text(text = "Enviar reporte") }
