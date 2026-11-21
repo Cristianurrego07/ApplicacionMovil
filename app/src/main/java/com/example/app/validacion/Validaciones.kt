@@ -2,7 +2,6 @@ package com.example.app.validacion
 
 object Validaciones {
 
-    // Quita puntos, guion y espacios para trabajar con el RUT.
     fun normalizarRut(valor: String): String {
         return valor
             .trim()
@@ -12,11 +11,12 @@ object Validaciones {
             .replace(" ", "")
     }
 
-    // Comprueba el cuerpo y el dígito verificador del RUT.
     fun rutValido(valor: String): Boolean {
+        val formato = Regex("""(?:[1-9][0-9]?\.[0-9]{3}\.[0-9]{3}|[1-9][0-9]{0,2}\.[0-9]{3})-[0-9Kk]""")
+        if (!valor.matches(formato)) return false
+
         val rut = normalizarRut(valor)
 
-        // El RUT debe tener entre 1 y 8 dígitos más su verificador.
         if (!rut.matches(Regex("[0-9]{1,8}[0-9K]"))) {
             return false
         }
@@ -43,7 +43,6 @@ object Validaciones {
         return rut.last() == verificador
     }
 
-    // Agrega puntos y guion para mostrar y guardar el RUT.
     fun formatearRut(valor: String): String {
         val rut = normalizarRut(valor)
 
@@ -61,7 +60,6 @@ object Validaciones {
         return "$cuerpo-${rut.last()}"
     }
 
-    // Comprueba la estructura del correo electrónico.
     fun correoValido(valor: String): Boolean {
         val correo = valor.trim()
 
@@ -101,7 +99,6 @@ object Validaciones {
                 dominio.last().length >= 2
     }
 
-    // Comprueba que el nombre solo contenga letras, espacios y acentos (sin números).
     fun nombreValido(valor: String): Boolean {
         val nombre = valor.trim()
         if (nombre.isBlank()) return false

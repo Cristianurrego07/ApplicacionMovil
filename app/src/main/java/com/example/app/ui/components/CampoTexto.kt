@@ -2,6 +2,9 @@ package com.example.app.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,7 +20,9 @@ fun CampoTexto(
     etiqueta: String,
     alCambiar: (String) -> Unit,
     error: String? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    imeAction: ImeAction = ImeAction.Next,
+    keyboardActions: KeyboardActions = KeyboardActions.Default
 ) {
     OutlinedTextField(
         value = valor,
@@ -29,6 +34,8 @@ fun CampoTexto(
         },
 
         singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = imeAction),
+        keyboardActions = keyboardActions,
         shape = EstilosCampo.forma,
         colors = EstilosCampo.colores(),
 

@@ -107,7 +107,7 @@ class FormularioViewModel : ViewModel() {
         }
 
         val errorRut = if (!Validaciones.rutValido(estado.rut)) {
-            "Ingresa un RUT válido, incluyendo su dígito verificador"
+            "Ingresa un RUT válido con puntos y guion"
         } else {
             null
         }

@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -28,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -79,6 +83,7 @@ fun LoginContent(
     onIngresar: () -> Unit,
     onCrearCuenta: () -> Unit
 ) {
+    val focoContrasena = remember { FocusRequester() }
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background
     ) { espacio ->
@@ -158,6 +163,7 @@ fun LoginContent(
                         unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         cursorColor = MaterialTheme.colorScheme.primary
                     ),
+                    keyboardActions = KeyboardActions(onNext = { focoContrasena.requestFocus() }),
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Text,
                         imeAction = ImeAction.Next
@@ -165,6 +171,9 @@ fun LoginContent(
                 )
 
                 CampoContrasena(
+                    modifier = Modifier.focusRequester(focoContrasena),
+                    imeAction = ImeAction.Done,
+                    keyboardActions = KeyboardActions(onDone = { onIngresar() }),
                     valor = estado.contrasena,
                     alCambiar = onContrasena,
                     visible = estado.contrasenaVisible,

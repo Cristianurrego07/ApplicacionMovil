@@ -5,7 +5,9 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -32,7 +34,9 @@ fun CampoContrasena(
     alAlternarVisible: () -> Unit,
     modifier: Modifier = Modifier,
     error: String? = null,
-    etiqueta: String = "Contraseña"
+    etiqueta: String = "Contraseña",
+    imeAction: ImeAction = ImeAction.Done,
+    keyboardActions: KeyboardActions = KeyboardActions.Default
 ) {
     OutlinedTextField(
         value = valor,
@@ -43,7 +47,6 @@ fun CampoContrasena(
         },
         singleLine = true,
 
-        // Ícono de candado
         leadingIcon = {
             Icon(
                 painter = painterResource(R.drawable.ic_candado),
@@ -52,7 +55,6 @@ fun CampoContrasena(
             )
         },
 
-        // Mostrar u ocultar la contraseña
         visualTransformation = if (visible) {
             VisualTransformation.None
         } else {
@@ -90,7 +92,6 @@ fun CampoContrasena(
             }
         },
 
-        // Estilo y mensaje de error
         shape = EstilosCampo.forma,
         colors = EstilosCampo.colores(),
         isError = error != null,
@@ -99,8 +100,10 @@ fun CampoContrasena(
                 Text(text = mensaje)
             }
         },
+        keyboardActions = keyboardActions,
         keyboardOptions = KeyboardOptions(
-            keyboardType = KeyboardType.Password
+            keyboardType = KeyboardType.Password,
+            imeAction = imeAction
         )
     )
 }

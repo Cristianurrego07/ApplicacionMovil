@@ -5,6 +5,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -133,6 +138,7 @@ fun FormularioContent(
     onAbrirMenu: () -> Unit = {}
 ) {
     val esAgente = rol == "AGENTE"
+    val (focoRut, focoCorreo, focoClave, focoConfirmacion) = remember { FocusRequester.createRefs() }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -164,6 +170,7 @@ fun FormularioContent(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(espacio)
+                .animateContentSize()
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -175,26 +182,34 @@ fun FormularioContent(
                     valor = uiState.nombre,
                     etiqueta = "Nombre completo",
                     alCambiar = onNombreCambia,
-                    error = uiState.errorNombre
+                    error = uiState.errorNombre,
+                    keyboardActions = KeyboardActions(onNext = { focoRut.requestFocus() })
                 )
                 CampoTexto(
                     valor = uiState.rut,
                     etiqueta = "RUT",
                     alCambiar = onRutCambia,
-                    error = uiState.errorRut
+                    error = uiState.errorRut,
+                    modifier = Modifier.focusRequester(focoRut),
+                    keyboardActions = KeyboardActions(onNext = { focoCorreo.requestFocus() })
                 )
                 CampoTexto(
                     valor = uiState.correo,
                     etiqueta = "Correo electrónico",
                     alCambiar = onCorreoCambia,
-                    error = uiState.errorCorreo
+                    error = uiState.errorCorreo,
+                    modifier = Modifier.focusRequester(focoCorreo),
+                    keyboardActions = KeyboardActions(onNext = { focoClave.requestFocus() })
                 )
                 CampoContrasena(
                     valor = uiState.contrasena,
                     alCambiar = onContrasenaCambia,
                     visible = uiState.contrasenaVisible,
                     alAlternarVisible = onAlternarVisibilidad,
-                    error = uiState.errorContrasena
+                    error = uiState.errorContrasena,
+                    modifier = Modifier.focusRequester(focoClave),
+                    imeAction = ImeAction.Next,
+                    keyboardActions = KeyboardActions(onNext = { focoConfirmacion.requestFocus() })
                 )
                 CampoContrasena(
                     valor = uiState.confirmarContrasena,
@@ -202,7 +217,8 @@ fun FormularioContent(
                     visible = uiState.contrasenaVisible,
                     alAlternarVisible = onAlternarVisibilidad,
                     error = uiState.errorConfirmarContrasena,
-                    etiqueta = "Repetir contraseña"
+                    etiqueta = "Repetir contraseña",
+                    modifier = Modifier.focusRequester(focoConfirmacion)
                 )
             }
 

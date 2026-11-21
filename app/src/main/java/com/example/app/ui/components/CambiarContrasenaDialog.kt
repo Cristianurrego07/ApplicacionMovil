@@ -1,6 +1,11 @@
 package com.example.app.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
@@ -31,6 +36,7 @@ fun CambiarContrasenaDialog(
     )
 
     val estado by viewModel.uiState.collectAsStateWithLifecycle()
+    val (focoNueva, focoConfirmacion) = remember { FocusRequester.createRefs() }
 
     fun cerrar() {
         viewModel.limpiar()
@@ -69,6 +75,8 @@ fun CambiarContrasenaDialog(
                     visible = estado.actualVisible,
                     alAlternarVisible = viewModel::alternarActual,
                     error = estado.errorActual,
+                    imeAction = ImeAction.Next,
+                    keyboardActions = KeyboardActions(onNext = { focoNueva.requestFocus() }),
                     etiqueta = "Contraseña actual"
                 )
 
@@ -78,6 +86,9 @@ fun CambiarContrasenaDialog(
                     visible = estado.nuevaVisible,
                     alAlternarVisible = viewModel::alternarNueva,
                     error = estado.errorNueva,
+                    modifier = Modifier.focusRequester(focoNueva),
+                    imeAction = ImeAction.Next,
+                    keyboardActions = KeyboardActions(onNext = { focoConfirmacion.requestFocus() }),
                     etiqueta = "Nueva contraseña"
                 )
 
@@ -87,6 +98,7 @@ fun CambiarContrasenaDialog(
                     visible = estado.confirmacionVisible,
                     alAlternarVisible = viewModel::alternarConfirmacion,
                     error = estado.errorConfirmacion,
+                    modifier = Modifier.focusRequester(focoConfirmacion),
                     etiqueta = "Confirmar nueva contraseña"
                 )
 

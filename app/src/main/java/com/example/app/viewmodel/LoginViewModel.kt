@@ -3,6 +3,7 @@ package com.example.app.viewmodel
 import androidx.lifecycle.ViewModel
 import com.example.app.model.LoginUiState
 import com.example.app.model.Usuario
+import com.example.app.validacion.Validaciones
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -52,6 +53,12 @@ class LoginViewModel : ViewModel() {
             estado.identificador.any { it.isWhitespace() } ->
                 "El correo o RUT no puede contener espacios"
 
+            '@' in estado.identificador && !Validaciones.correoValido(estado.identificador) ->
+                "Ingresa un correo válido"
+
+            '@' !in estado.identificador && !Validaciones.rutValido(estado.identificador) ->
+                "Ingresa un RUT válido con puntos y guion"
+
             else -> null
         }
 
@@ -100,7 +107,6 @@ class LoginViewModel : ViewModel() {
             return null
         }
 
-        // Limpia el formulario después de iniciar sesión.
         _uiState.value = LoginUiState()
 
         return usuario

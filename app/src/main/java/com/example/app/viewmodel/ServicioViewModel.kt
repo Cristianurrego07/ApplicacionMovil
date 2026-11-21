@@ -2,6 +2,7 @@ package com.example.app.viewmodel
 
 import androidx.lifecycle.ViewModel
 import com.example.app.model.Servicio
+import com.example.app.model.CatalogoServicios
 import com.example.app.model.ServicioUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,11 +34,13 @@ class ServicioViewModel : ViewModel() {
 
     fun onAgregar(usuarioId: Long): Servicio? {
         val estado = _uiState.value
-        val errorNombre = if (estado.nombreEmpresa.isBlank()) {
-            "El nombre de la empresa es obligatorio"
-        } else null
+        val empresa = CatalogoServicios.buscar(estado.nombreEmpresa)
+        val errorNombre = when {
+            estado.nombreEmpresa.isBlank() -> "El nombre de la empresa es obligatorio"
+            else -> null
+        }
         val errorRut = if (!Validaciones.rutValido(estado.rutPagador)) {
-            "Ingresa un RUT válido, incluyendo su dígito verificador"
+            "Ingresa un RUT válido con puntos y guion"
         } else null
         val errorAlias = if (estado.alias.isBlank()) {
             "Ingresa una descripción o alias"
@@ -56,13 +59,13 @@ class ServicioViewModel : ViewModel() {
 
         return Servicio(
             usuarioId = usuarioId,
-            nombreEmpresa = estado.nombreEmpresa.trim(),
+            nombreEmpresa = if (CatalogoServicios.esDuoc(estado.nombreEmpresa)) "Duoc Uc" else empresa!!.empresa,
             rutPagador = Validaciones.formatearRut(estado.rutPagador),
             alias = estado.alias.trim()
         )
     }
 
     fun onGuardadoFallido() {
-        _uiState.update { it.copy(errorRegistro = "No se pudo guardar el servicio.") }
+        _uiState.update { it.copy(errorRegistro = "No se pudo guardar. Revisa si ya agregaste este servicio.") }
     }
 }

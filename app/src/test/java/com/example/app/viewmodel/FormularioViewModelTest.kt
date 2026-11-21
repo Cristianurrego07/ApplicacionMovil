@@ -19,7 +19,7 @@ class FormularioViewModelTest {
 
     private fun llenarFormularioValido() {
         viewModel.onNombreCambia(" Ana Pérez ")
-        viewModel.onRutCambia("123456785")
+        viewModel.onRutCambia("12.345.678-5")
         viewModel.onCorreoCambia("Ana@Example.com")
         viewModel.onContrasenaCambia("Clave1!")
         viewModel.onConfirmarContrasenaCambia("Clave1!")
@@ -49,7 +49,7 @@ class FormularioViewModelTest {
 
         assertNull(usuario)
         assertEquals(
-            "Ingresa un RUT válido, incluyendo su dígito verificador",
+            "Ingresa un RUT válido con puntos y guion",
             viewModel.uiState.value.errorRut
         )
     }

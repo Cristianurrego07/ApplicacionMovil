@@ -102,7 +102,7 @@ class PerfilViewModel : ViewModel() {
         }
 
         val errorRut = if (!Validaciones.rutValido(estado.rut)) {
-            "Ingresa un RUT válido, incluyendo su dígito verificador"
+            "Ingresa un RUT válido con puntos y guion"
         } else {
             null
         }
@@ -133,9 +133,12 @@ class PerfilViewModel : ViewModel() {
             else -> null
         }
 
-        // Dirección y ciudad son opcionales.
-        val errorDireccion: String? = null
-        val errorCiudad: String? = null
+        val errorDireccion = if (estado.direccion.length > 120) "La dirección no puede superar 120 caracteres" else null
+        val errorCiudad = when {
+            estado.ciudad.isBlank() -> null
+            !Validaciones.nombreValido(estado.ciudad) -> "La ciudad solo debe contener letras"
+            else -> null
+        }
 
         _uiState.update {
             it.copy(
