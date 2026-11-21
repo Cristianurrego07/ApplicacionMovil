@@ -21,7 +21,9 @@ class AvisosWorker(context: Context, parametros: WorkerParameters) : Worker(cont
         val db = PagoFlexDbHelper(applicationContext)
 
         return try {
-            val compromisos = db.listarCompromisos(usuarioId)
+            val usuario = db.buscarPorId(usuarioId)
+            val esEjecutivo = usuario?.rolNombre?.equals("EJECUTIVO", ignoreCase = true) == true
+            val compromisos = if (esEjecutivo) db.listarCompromisosEjecutivo(usuarioId) else db.listarCompromisos(usuarioId)
             val hoyTexto = formato.format(java.util.Date())
             val formatoUtc = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
                 isLenient = false

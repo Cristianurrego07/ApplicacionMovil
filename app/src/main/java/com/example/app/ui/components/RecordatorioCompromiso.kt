@@ -32,14 +32,17 @@ import com.example.app.notificaciones.AvisosScheduler
 import com.example.app.notificaciones.NotificacionesPreferencias
 
 @Composable
-fun RecordatorioCompromiso(compromiso: Compromiso) {
+fun RecordatorioCompromiso(
+    compromiso: Compromiso,
+    usuarioId: Long = compromiso.usuario.id
+) {
     val context = LocalContext.current
     val esPreview = LocalInspectionMode.current
-    val preferencias = remember(compromiso.usuario.id, esPreview) {
-        if (esPreview) null else NotificacionesPreferencias(context, compromiso.usuario.id)
+    val preferencias = remember(usuarioId, esPreview) {
+        if (esPreview) null else NotificacionesPreferencias(context, usuarioId)
     }
     var mostrarDialogo by remember { mutableStateOf(false) }
-    var dias by remember(compromiso.folio) { mutableIntStateOf(preferencias?.dias(compromiso.folio) ?: 0) }
+    var dias by remember(usuarioId, compromiso.folio) { mutableIntStateOf(preferencias?.dias(compromiso.folio) ?: 0) }
 
     Box(
         modifier = Modifier.size(48.dp).clickable(

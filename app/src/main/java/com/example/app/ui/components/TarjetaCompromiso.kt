@@ -65,6 +65,14 @@ fun TarjetaCompromiso(
                 color = MaterialTheme.colorScheme.onSurface
             )
 
+            if (compromiso.numeroCuota.isNotBlank()) {
+                Text(
+                    text = "Cuota ${compromiso.numeroCuota}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
             Text(
                 text = formatearMonto(total),
                 style = MaterialTheme.typography.bodyLarge,
@@ -92,7 +100,6 @@ fun TarjetaCompromiso(
     }
 }
 
-// Muestra el monto con el formato usado en Chile.
 private fun formatearMonto(monto: Int): String {
     val formato = NumberFormat.getIntegerInstance(
         Locale.forLanguageTag("es-CL")
@@ -101,7 +108,6 @@ private fun formatearMonto(monto: Int): String {
     return "$" + formato.format(monto)
 }
 
-// Cambia la fecha para mostrarla como día-mes-año.
 private fun fechaBreve(fecha: String): String {
     return try {
         val fechaConvertida = try {
