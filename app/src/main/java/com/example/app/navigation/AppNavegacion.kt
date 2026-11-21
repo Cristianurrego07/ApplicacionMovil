@@ -54,7 +54,11 @@ fun AppNavegacion() {
 
     fun cargarDatosUsuario(usuarioId: Long, rolNombre: String? = null) {
         val esEjecutivo = rolNombre?.equals("EJECUTIVO", ignoreCase = true) == true
-        val compromisosVisibles = if (esEjecutivo) pagoFlexViewModel.listarCompromisosEjecutivo(usuarioId) else pagoFlexViewModel.listarCompromisos(usuarioId)
+        val compromisosVisibles = when {
+            esEjecutivo -> pagoFlexViewModel.listarCompromisosEjecutivo(usuarioId)
+            rolNombre == "AGENTE" -> pagoFlexViewModel.listarCompromisos()
+            else -> pagoFlexViewModel.listarCompromisos(usuarioId)
+        }
         val foliosVisibles = compromisosVisibles.map { it.folio }.toSet()
         pagoFlexViewModel.cargarReportes(
             when {
@@ -413,6 +417,7 @@ fun AppNavegacion() {
             AgenteScreen(
                 usuario = usuarioActual,
                 reportes = reportes,
+                compromisos = compromisos,
                 onVerPerfil = {
                     navController.navigate(Ruta.Perfil.ruta)
                 },

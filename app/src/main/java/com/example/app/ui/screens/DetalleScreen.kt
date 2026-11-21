@@ -42,6 +42,7 @@ import com.example.app.R
 import com.example.app.model.AplazamientoCuota
 import com.example.app.model.Compromiso
 import com.example.app.model.Usuario
+import com.example.app.ui.components.DialogoReporte
 import com.example.app.ui.components.BotonPrincipal
 import com.example.app.ui.components.BotonSecundario
 import com.example.app.ui.components.CampoTexto
@@ -71,8 +72,7 @@ fun DetalleScreen(
     var cantidadCuotas by remember { mutableIntStateOf(2) }
     var errorCuotas by remember { mutableStateOf<String?>(null) }
 
-    var motivo by remember { mutableStateOf("") }
-    var errorReporte by remember { mutableStateOf<String?>(null) }
+    var reporteEnviado by remember { mutableStateOf(false) }
     var errorPago by remember { mutableStateOf<String?>(null) }
 
     val vencido = compromiso.estado == "Vencido"
@@ -259,7 +259,6 @@ fun DetalleScreen(
                     BotonSecundario(
                         texto = "Reportar problema",
                         onClick = {
-                            errorReporte = null
                             mostrarReporte = true
                         },
                         modifier = Modifier.fillMaxWidth()
@@ -415,51 +414,25 @@ fun DetalleScreen(
     }
 
     if (mostrarReporte) {
-        AlertDialog(
-            onDismissRequest = {
+        DialogoReporte(
+            compromiso = compromiso,
+            onEnviar = onReportar,
+            onCerrar = { mostrarReporte = false },
+            onExito = {
                 mostrarReporte = false
-            },
-            title = {
-                Text(text = "Reportar problema")
-            },
-            text = {
-                Column {
-                    CampoTexto(
-                        valor = motivo,
-                        etiqueta = "Motivo",
-                        alCambiar = {
-                            motivo = it
-                            errorReporte = null
-                        },
-                        error = errorReporte
-                    )
-                }
-            },
+                reporteEnviado = true
+            }
+        )
+    }
+
+    if (reporteEnviado) {
+        AlertDialog(
+            onDismissRequest = { reporteEnviado = false; onVolver() },
+            title = { Text("Reporte enviado") },
+            text = { Text("El compromiso quedó en revisión y no se puede pagar mientras revisamos el caso.") },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (motivo.isBlank()) {
-                            errorReporte = "Describe el motivo del reporte."
-                        } else if (onReportar(motivo.trim())) {
-                            mostrarReporte = false
-                            errorReporte = null
-                        } else {
-                            errorReporte =
-                                "No se pudo enviar el reporte. Puede existir " +
-                                        "un reporte anterior para este compromiso."
-                        }
-                    }
-                ) {
-                    Text(text = "Enviar")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        mostrarReporte = false
-                    }
-                ) {
-                    Text(text = "Cancelar")
+                TextButton(onClick = { reporteEnviado = false; onVolver() }) {
+                    Text("Listo")
                 }
             }
         )

@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.app.viewmodel.RespuestaReporteViewModel
+import com.example.app.model.Compromiso
 import com.example.app.model.Reporte
 import com.example.app.model.Usuario
 import com.example.app.ui.components.BotonPrincipal
@@ -75,6 +76,7 @@ private val estadosReporte = listOf(
 fun AgenteScreen(
     usuario: Usuario?,
     reportes: List<Reporte>,
+    compromisos: List<Compromiso> = emptyList(),
     onVerPerfil: () -> Unit,
     onVerHistorial: () -> Unit,
     onCerrarSesion: () -> Unit,
@@ -88,44 +90,84 @@ fun AgenteScreen(
         mutableStateOf<String?>(null)
     }
 
-    var reporteAResolver by remember { mutableStateOf<Reporte?>(null) }
-    var rechazar by remember { mutableStateOf(false) }
+    var reporteSeleccionado by remember { mutableStateOf<Reporte?>(null) }
     val respuestaViewModel: RespuestaReporteViewModel = viewModel()
     val respuesta by respuestaViewModel.uiState.collectAsStateWithLifecycle()
 
-    reporteAResolver?.let { reporte ->
+    reporteSeleccionado?.let { reporte ->
+        val compromiso = compromisos.find { it.folio == reporte.folio }
+        val resuelto = reporte.estado == "Resuelto"
+
         AlertDialog(
-            onDismissRequest = { reporteAResolver = null; respuestaViewModel.limpiar() },
-            title = { Text(if (rechazar) "Rechazar reporte" else "Responder reporte") },
+            onDismissRequest = {
+                reporteSeleccionado = null
+                respuestaViewModel.limpiar()
+            },
+            title = { Text(if (resuelto) "Reporte resuelto" else "Detalle del reporte") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Al cerrar el reporte, el compromiso volverá a estar pendiente.")
-                    OutlinedTextField(
-                        value = respuesta.texto,
-                        onValueChange = respuestaViewModel::cambiarTexto,
-                        label = { Text(if (rechazar) "Motivo del rechazo" else "Solución") },
-                        isError = respuesta.error != null,
-                        supportingText = { respuesta.error?.let { Text(it) } }
-                    )
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("Folio: ${reporte.folio}")
+                    compromiso?.let {
+                        Text("Cliente: ${it.usuario.nombre}")
+                        Text("Empresa: ${it.empresa}")
+                        Text("Concepto: ${it.concepto}")
+                    }
+                    Text("Motivo del cliente: ${reporte.motivo}")
+                    if (resuelto) {
+                        Text("Respuesta: ${reporte.respuesta ?: "Sin respuesta registrada"}")
+                    } else {
+                        OutlinedTextField(
+                            value = respuesta.texto,
+                            onValueChange = respuestaViewModel::cambiarTexto,
+                            label = { Text("Respuesta para el cliente") },
+                            isError = respuesta.error != null,
+                            supportingText = { respuesta.error?.let { Text(it) } }
+                        )
+                        Text("Elige devolver el cobro para pago o anularlo.")
+                    }
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    if (respuestaViewModel.validar()) {
-                        val tipo = if (rechazar) "Rechazado" else "Solución"
-                        if (onCambiarEstado(reporte, "Pendiente", "$tipo: ${respuesta.texto.trim()}")) {
-                            reporteAResolver = null
-                            respuestaViewModel.limpiar()
-                            errorAccion = null
-                        } else {
-                            respuestaViewModel.mostrarError("No se pudo guardar la respuesta. Inténtalo nuevamente.")
-                        }
+                if (resuelto) {
+                    TextButton(onClick = { reporteSeleccionado = null }) { Text("Cerrar") }
+                } else {
+                    Column {
+                        TextButton(onClick = {
+                            if (respuestaViewModel.validar()) {
+                                val mensaje = "Cobro devuelto para pago: ${respuesta.texto.trim()}"
+                                if (onCambiarEstado(reporte, "Pendiente", mensaje)) {
+                                    reporteSeleccionado = null
+                                    respuestaViewModel.limpiar()
+                                    errorAccion = null
+                                } else {
+                                    respuestaViewModel.mostrarError("No se pudo devolver el cobro. Inténtalo nuevamente.")
+                                }
+                            }
+                        }) { Text("Devolver para pago") }
+                        TextButton(onClick = {
+                            if (respuestaViewModel.validar()) {
+                                val mensaje = "Cobro anulado: ${respuesta.texto.trim()}"
+                                if (onCambiarEstado(reporte, "Anulado", mensaje)) {
+                                    reporteSeleccionado = null
+                                    respuestaViewModel.limpiar()
+                                    errorAccion = null
+                                } else {
+                                    respuestaViewModel.mostrarError("No se pudo anular el cobro. Inténtalo nuevamente.")
+                                }
+                            }
+                        }) { Text("Anular cobro") }
                     }
-                }) { Text("Enviar") }
+                }
             },
             dismissButton = {
-                TextButton(onClick = { reporteAResolver = null; respuestaViewModel.limpiar() }) {
-                    Text("Cancelar")
+                if (!resuelto) {
+                    TextButton(onClick = {
+                        reporteSeleccionado = null
+                        respuestaViewModel.limpiar()
+                    }) { Text("Volver") }
                 }
             }
         )
@@ -328,7 +370,15 @@ fun AgenteScreen(
                         ) { reporte ->
 
                             TarjetaSeccion(
-                                titulo = "Compromiso: ${reporte.folio}"
+                                titulo = "Compromiso: ${reporte.folio}",
+                                modifier = if (reporte.estado == "En proceso" || reporte.estado == "Resuelto") {
+                                    Modifier.clickable {
+                                        respuestaViewModel.limpiar()
+                                        reporteSeleccionado = reporte
+                                    }
+                                } else {
+                                    Modifier
+                                }
                             ) {
                                 Text(
                                     text = "Motivo: ${reporte.motivo}",
@@ -348,7 +398,7 @@ fun AgenteScreen(
                                     "Pendiente",
                                     "Abierto" -> {
                                         BotonPrincipal(
-                                            texto = "Tomar reporte",
+                                            texto = "Aceptar reporte",
                                             onClick = {
                                                 errorAccion = if (
                                                     onCambiarEstado(
@@ -366,30 +416,15 @@ fun AgenteScreen(
                                         )
                                     }
 
-                                    "En proceso" -> {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                        ) {
-                                            BotonPrincipal(
-                                                texto = "Responder",
-                                                onClick = {
-                                                    respuestaViewModel.limpiar()
-                                                    rechazar = false
-                                                    reporteAResolver = reporte
-                                                },
-                                                modifier = Modifier.weight(1f)
-                                            )
-                                            BotonSecundario(
-                                                texto = "Rechazar",
-                                                onClick = {
-                                                    respuestaViewModel.limpiar()
-                                                    rechazar = true
-                                                    reporteAResolver = reporte
-                                                },
-                                                modifier = Modifier.weight(1f)
-                                            )
-                                        }
+                                    "En proceso", "Resuelto" -> {
+                                        BotonSecundario(
+                                            texto = "Ver detalle",
+                                            onClick = {
+                                                respuestaViewModel.limpiar()
+                                                reporteSeleccionado = reporte
+                                            },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
                                     }
                                 }
 

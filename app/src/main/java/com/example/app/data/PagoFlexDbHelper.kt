@@ -731,7 +731,7 @@ class PagoFlexDbHelper(context: Context) :
     }
 
     fun resolverReporte(folio: String, estadoCompromiso: String, respuesta: String): Boolean {
-        if (estadoCompromiso != "Pendiente" || respuesta.isBlank()) return false
+        if (estadoCompromiso !in listOf("Pendiente", "Anulado") || respuesta.isBlank()) return false
         val db = writableDatabase
         db.beginTransaction()
         try {

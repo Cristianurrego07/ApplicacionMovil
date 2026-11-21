@@ -41,6 +41,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.app.viewmodel.ReporteFormularioViewModel
 import com.example.app.model.Compromiso
 import com.example.app.model.Usuario
+import com.example.app.ui.components.DialogoReporte
 import com.example.app.ui.components.BotonPrincipal
 import com.example.app.ui.components.CampoTexto
 import com.example.app.ui.components.TarjetaSeccion
@@ -57,11 +58,6 @@ fun ReportarProblemaScreen(
         it.estado == "Pendiente" || it.estado == "Vencido"
     }
     var compromisoSeleccionado by remember { mutableStateOf<Compromiso?>(null) }
-    var motivoSeleccionado by remember { mutableStateOf("Ya pagué por otro medio") }
-    var comentario by remember { mutableStateOf("") }
-    val formulario: ReporteFormularioViewModel = viewModel()
-    val estadoFormulario by formulario.uiState.collectAsStateWithLifecycle()
-    val error = estadoFormulario.error
     var mostrarConfirmacion by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -121,9 +117,6 @@ fun ReportarProblemaScreen(
                             texto = "Elegir compromiso",
                             onClick = {
                                 compromisoSeleccionado = compromiso
-                                motivoSeleccionado = "Ya pagué por otro medio"
-                                comentario = ""
-                                formulario.limpiarError()
                             },
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -134,58 +127,13 @@ fun ReportarProblemaScreen(
     }
 
     compromisoSeleccionado?.let { compromiso ->
-        AlertDialog(
-            onDismissRequest = { compromisoSeleccionado = null },
-            title = { Text(text = "¿Qué problema tienes?") },
-            text = {
-                Column {
-                    Text(text = "${compromiso.empresa} · ${compromiso.concepto}")
-                    val motivos = listOf(
-                        "Ya pagué por otro medio",
-                        "No reconozco este cobro",
-                        "El monto no corresponde",
-                        "Otro"
-                    )
-                    motivos.forEach { opcion ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            RadioButton(
-                                selected = motivoSeleccionado == opcion,
-                                onClick = { motivoSeleccionado = opcion; formulario.limpiarError() }
-                            )
-                            Text(text = opcion)
-                        }
-                    }
-                    if (motivoSeleccionado == "Otro") {
-                        CampoTexto(
-                            valor = comentario,
-                            etiqueta = "Describe el problema",
-                            alCambiar = { comentario = it; formulario.limpiarError() },
-                            error = error
-                        )
-                    } else {
-                        error?.let { mensaje ->
-                            Text(text = mensaje, color = MaterialTheme.colorScheme.error)
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    val motivo = formulario.crearMotivo(motivoSeleccionado, comentario)
-                    if (motivo != null) {
-                        if (onReportar(compromiso.folio, motivo)) {
-                            compromisoSeleccionado = null
-                            mostrarConfirmacion = true
-                        } else {
-                            formulario.mostrarError("No se pudo enviar el reporte. Inténtalo nuevamente.")
-                        }
-                    }
-                }) { Text(text = "Enviar reporte") }
-            },
-            dismissButton = {
-                TextButton(onClick = { compromisoSeleccionado = null }) {
-                    Text(text = "Cancelar")
-                }
+        DialogoReporte(
+            compromiso = compromiso,
+            onEnviar = { motivo -> onReportar(compromiso.folio, motivo) },
+            onCerrar = { compromisoSeleccionado = null },
+            onExito = {
+                compromisoSeleccionado = null
+                mostrarConfirmacion = true
             }
         )
     }
