@@ -10,10 +10,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -51,10 +53,12 @@ fun UsuarioScreen(
 ) {
     val pendientes = compromisos.filter { it.estado == "Pendiente" }
     var filtroSeleccionado by rememberSaveable { mutableStateOf("Todos") }
-    val compromisosFiltrados = if (filtroSeleccionado == "Todos") {
-        compromisos
-    } else {
-        compromisos.filter { it.estado == filtroSeleccionado }
+    var busqueda by rememberSaveable { mutableStateOf("") }
+    val compromisosFiltrados = compromisos.filter { compromiso ->
+        val coincideEstado = filtroSeleccionado == "Todos" || compromiso.estado == filtroSeleccionado
+        val coincideBusqueda = compromiso.empresa.contains(busqueda.trim(), ignoreCase = true) ||
+            compromiso.concepto.contains(busqueda.trim(), ignoreCase = true)
+        coincideEstado && coincideBusqueda
     }
 
     Scaffold(
@@ -104,6 +108,16 @@ fun UsuarioScreen(
             }
 
             item {
+                OutlinedTextField(
+                    value = busqueda,
+                    onValueChange = { busqueda = it },
+                    label = { Text("Buscar compromiso") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            item {
                 val filtros = listOf("Todos", "Pendiente", "Vencido", "En revisión", "Pagado", "Anulado")
                 Row(
                     modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -131,7 +145,7 @@ fun UsuarioScreen(
             } else if (compromisosFiltrados.isEmpty()) {
                 item {
                     Text(
-                        text = "No hay compromisos para este filtro.",
+                        text = "No hay compromisos para esta búsqueda o filtro.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }

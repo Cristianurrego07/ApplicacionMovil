@@ -2,10 +2,13 @@ package com.example.app.ui.screens
 
 import android.content.res.Configuration
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -77,7 +80,8 @@ fun InicioScreen(
     onEliminarServicios: () -> Unit,
     onVerHistorial: () -> Unit,
     onReportarProblema: () -> Unit,
-    onVerHistorialReportes: () -> Unit
+    onVerHistorialReportes: () -> Unit,
+    onVerServicios: () -> Unit = {}
 ) {
     val pendientes = compromisos.filter {
         it.estado == "Pendiente" || it.estado == "Vencido"
@@ -96,131 +100,129 @@ fun InicioScreen(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                Text(
-                    text = buildAnnotatedString {
-                        withStyle(SpanStyle(color = Primario)) {
-                            append("Pago")
-                        }
-                        withStyle(SpanStyle(color = Secundario)) {
-                            append("Flex")
-                        }
-                    },
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(20.dp)
-                )
-
-                HorizontalDivider()
-
-                NavigationDrawerItem(
-                    label = { Text(text = "Mis compromisos") },
-                    selected = false,
-                    onClick = {
-                        scope.launch {
-                            drawerState.close()
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                ) {
+                    Row(modifier = Modifier.padding(start = 20.dp, top = 20.dp, end = 20.dp)) {
+                        Text("Pago", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
+                        Text("Flex", color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.titleLarge)
+                    }
+                    Text(
+                        text = "Cliente · ${usuario?.nombre ?: "Usuario"}",
+                        modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 16.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    HorizontalDivider()
+                    Text(
+                        text = "Inicio",
+                        modifier = Modifier.padding(start = 20.dp, top = 14.dp, bottom = 4.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    NavigationDrawerItem(
+                        label = { Text("Mis compromisos") },
+                        selected = false,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        onClick = {
+                            scope.launch { drawerState.close() }
                             onVerCompromisos()
                         }
-                    }
-                )
-
-                NavigationDrawerItem(
-                    label = {
-                        Text(
-                            text = "Mi perfil",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        onVerPerfil()
-                    }
-                )
-
-                NavigationDrawerItem(
-                    label = {
-                        Text(
-                            text = "Agregar servicio",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        onAgregarServicio()
-                    }
-                )
-
-                NavigationDrawerItem(
-                    label = {
-                        Text(
-                            text = "Eliminar servicios",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        onEliminarServicios()
-                    }
-                )
-
-                NavigationDrawerItem(
-                    label = {
-                        Text(
-                            text = "Historial de pagos",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        onVerHistorial()
-                    }
-                )
-
-                NavigationDrawerItem(
-                    label = {
-                        Text(
-                            text = "Reportar problema",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        onReportarProblema()
-                    }
-                )
-
-                NavigationDrawerItem(
-                    label = {
-                        Text(
-                            text = "Historial de reportes",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        onVerHistorialReportes()
-                    }
-                )
-
-                HorizontalDivider()
-
-                NavigationDrawerItem(
-                    label = {
-                        Text(
-                            text = "Cerrar sesión",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        onVolver()
-                    }
-                )
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
+                    Text(
+                        text = "Servicios",
+                        modifier = Modifier.padding(start = 20.dp, top = 14.dp, bottom = 4.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    NavigationDrawerItem(
+                        label = { Text("Mis servicios") },
+                        selected = false,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onVerServicios()
+                        }
+                    )
+                    NavigationDrawerItem(
+                        label = { Text("Agregar servicio") },
+                        selected = false,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onAgregarServicio()
+                        }
+                    )
+                    NavigationDrawerItem(
+                        label = { Text("Eliminar servicios") },
+                        selected = false,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onEliminarServicios()
+                        }
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
+                    Text(
+                        text = "Actividad",
+                        modifier = Modifier.padding(start = 20.dp, top = 14.dp, bottom = 4.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    NavigationDrawerItem(
+                        label = { Text("Historial de pagos") },
+                        selected = false,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onVerHistorial()
+                        }
+                    )
+                    NavigationDrawerItem(
+                        label = { Text("Reportar problema") },
+                        selected = false,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onReportarProblema()
+                        }
+                    )
+                    NavigationDrawerItem(
+                        label = { Text("Mis reportes") },
+                        selected = false,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onVerHistorialReportes()
+                        }
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
+                    Text(
+                        text = "Cuenta",
+                        modifier = Modifier.padding(start = 20.dp, top = 14.dp, bottom = 4.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    NavigationDrawerItem(
+                        label = { Text("Mi perfil") },
+                        selected = false,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onVerPerfil()
+                        }
+                    )
+                    NavigationDrawerItem(
+                        label = { Text("Cerrar sesión") },
+                        selected = false,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onVolver()
+                        }
+                    )
+                }
             }
         }
     ) {
@@ -283,7 +285,6 @@ fun InicioScreen(
                 contentPadding = PaddingValues(vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Saludo y descripción
                 item {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -302,7 +303,6 @@ fun InicioScreen(
                     }
                 }
 
-                // Resumen de pagos
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -352,7 +352,6 @@ fun InicioScreen(
                     }
                 }
 
-                // Lista de compromisos
                 item {
                     Text(
                         text = "Tus próximos compromisos:",
@@ -437,7 +436,6 @@ private fun InicioPreview() {
             rolNombre = "CLIENTE"
         )
 
-        // El preview usa los mismos ejemplos y fechas de la base de datos.
         val hoy = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(java.util.Date())
 
         fun estadoSegunFecha(fecha: String): String {
