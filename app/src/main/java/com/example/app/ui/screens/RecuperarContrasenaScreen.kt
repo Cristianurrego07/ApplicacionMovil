@@ -40,7 +40,6 @@ import com.example.app.R
 import com.example.app.ui.components.CampoContrasena
 import com.example.app.ui.theme.AppThemePreview
 
-// Pasos que se mostrarán en la pantalla.
 enum class PasoRecuperacion {
     CORREO,
     CODIGO,

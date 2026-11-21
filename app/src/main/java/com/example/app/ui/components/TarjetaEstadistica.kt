@@ -52,7 +52,6 @@ fun TarjetaEstadistica(
     }
 }
 
-
 @Preview(showBackground = true)
 @Composable
 private fun TarjetaEstadisticaPreview() {

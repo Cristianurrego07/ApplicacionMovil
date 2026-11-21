@@ -11,13 +11,10 @@ import androidx.core.content.ContextCompat
 
 object Permisos {
 
-    // Permiso para usar la cámara
     val CAMARA: String = Manifest.permission.CAMERA
 
-    // Permiso para mostrar notificaciones.
     val NOTIFICACIONES: String = Manifest.permission.POST_NOTIFICATIONS
 
-    // El permiso para leer imágenes depende de la versión de Android.
     val IMAGENES: String =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             Manifest.permission.READ_MEDIA_IMAGES
@@ -25,7 +22,6 @@ object Permisos {
             Manifest.permission.READ_EXTERNAL_STORAGE
         }
 
-    // Comprueba si la app tiene un permiso concedido.
     fun tiene(
         context: Context,
         permiso: String
@@ -36,7 +32,6 @@ object Permisos {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    // Comprueba el acceso a imágenes.
     fun tieneImagenes(context: Context): Boolean {
         val accesoCompleto = tiene(context, IMAGENES)
 
@@ -50,7 +45,6 @@ object Permisos {
         return accesoCompleto || accesoSeleccionado
     }
 
-    // Indica qué permisos de imágenes solicitar según la versión.
     fun permisosImagenes(): Array<String> {
         return if (Build.VERSION.SDK_INT >= 34) {
             arrayOf(
@@ -62,7 +56,6 @@ object Permisos {
         }
     }
 
-    // Abre la pantalla de ajustes de esta aplicación.
     fun abrirAjustes(context: Context) {
         val intent = Intent(
             Settings.ACTION_APPLICATION_DETAILS_SETTINGS,

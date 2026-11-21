@@ -1,6 +1,5 @@
 package com.example.app.model
 
-
 data class Usuario(
     val id: Long = 0,
     val rut: String,

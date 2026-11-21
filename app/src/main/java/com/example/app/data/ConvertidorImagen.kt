@@ -10,13 +10,10 @@ import java.io.ByteArrayOutputStream
 
 object ConvertidorImagen {
 
-    // Tamaño máximo del lado más largo de la imagen.
     private const val LADO_MAXIMO = 400
 
-    // Calidad de compresión JPEG, de 0 a 100.
     private const val CALIDAD_JPEG = 80
 
-    // Lee una imagen de la galería y la convierte en Bitmap.
     fun desdeUri(context: Context, uri: Uri): Bitmap? {
         return try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -72,12 +69,10 @@ object ConvertidorImagen {
                 }
             }
         } catch (_: Exception) {
-            // No se pudo leer la imagen.
             null
         }
     }
 
-    // Reduce y comprime un Bitmap como JPEG.
     fun aBytes(bitmap: Bitmap): ByteArray {
         val imagenReducida = achicar(bitmap)
         val salida = ByteArrayOutputStream()
@@ -91,7 +86,6 @@ object ConvertidorImagen {
         return salida.toByteArray()
     }
 
-    // Convierte los bytes guardados en una imagen para mostrarla.
     fun aBitmap(bytes: ByteArray): Bitmap? {
         return BitmapFactory.decodeByteArray(
             bytes,
@@ -100,7 +94,6 @@ object ConvertidorImagen {
         )
     }
 
-    // Reduce la imagen conservando sus proporciones.
     private fun achicar(bitmap: Bitmap): Bitmap {
         val ladoMayor = maxOf(bitmap.width, bitmap.height)
 

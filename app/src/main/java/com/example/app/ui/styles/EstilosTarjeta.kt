@@ -10,16 +10,13 @@ import com.example.app.ui.theme.Dimens
 
 object EstilosTarjeta {
 
-    // Forma de las esquinas
     val forma = RoundedCornerShape(Dimens.radioTarjeta)
 
-    // Color de fondo
     @Composable
     fun colores() = CardDefaults.cardColors(
         containerColor = MaterialTheme.colorScheme.surface
     )
 
-    // Sombra de la tarjeta
     @Composable
     fun elevacion(): CardElevation = CardDefaults.cardElevation(
         defaultElevation = 2.dp

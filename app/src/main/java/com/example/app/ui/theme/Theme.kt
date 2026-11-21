@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-// Colores para el modo claro
 private val LightColorScheme = lightColorScheme(
     primary = PrimarioClaroModo,
     onPrimary = Blanco,
@@ -29,7 +28,6 @@ private val LightColorScheme = lightColorScheme(
     tertiary = Acento,
     onTertiary = Blanco,
 
-    // Estados de error y vencido
     error = Color(0xFFB3261E),
     onError = Color(0xFFFFFFFF),
     errorContainer = Color(0xFFF9DEDC),
@@ -44,7 +42,6 @@ private val LightColorScheme = lightColorScheme(
     onSurfaceVariant = Color(0xFF047857)
 )
 
-// Colores para el modo oscuro
 private val DarkColorScheme = darkColorScheme(
     primary = PagoFlexGreen,
     onPrimary = Blanco,
@@ -59,7 +56,6 @@ private val DarkColorScheme = darkColorScheme(
     tertiary = Acento,
     onTertiary = Blanco,
 
-    // Estados de error y vencido
     error = Color(0xFFF2B8B5),
     onError = Color(0xFF601410),
     errorContainer = Color(0xFF8C1D18),
@@ -81,7 +77,6 @@ fun AppTheme(
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
-        // Colores del dispositivo disponibles desde Android 12
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
 
@@ -104,7 +99,6 @@ fun AppTheme(
     )
 }
 
-// Tema con fondo para las vistas previas
 @Composable
 fun AppThemePreview(
     content: @Composable () -> Unit

@@ -24,7 +24,6 @@ fun BotonPrincipal(
         modifier = modifier,
         shape = EstilosBoton.forma,
 
-        // Colores del botón
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary

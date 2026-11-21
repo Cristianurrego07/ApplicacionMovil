@@ -25,7 +25,6 @@ class TarjetasViewModel(
             initialValue = leer(datos.value)
         )
 
-    // Convierte los datos guardados en una lista de tarjetas.
     private fun leer(datos: List<String>): List<TarjetaBancaria> {
         return datos
             .chunked(4)
@@ -42,7 +41,6 @@ class TarjetasViewModel(
             }
     }
 
-    // Guarda los datos en un formato que Android puede restaurar.
     private fun guardar(tarjetas: List<TarjetaBancaria>) {
         val datosGuardados = tarjetas.flatMap { tarjeta ->
             listOf(

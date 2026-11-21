@@ -17,7 +17,6 @@ fun EtiquetaEstado(
     estado: String,
     modifier: Modifier = Modifier
 ) {
-    // Color de fondo según el estado
     val colorFondo = when (estado) {
         "Pendiente" ->
             MaterialTheme.colorScheme.secondaryContainer
@@ -32,7 +31,6 @@ fun EtiquetaEstado(
             MaterialTheme.colorScheme.surfaceVariant
     }
 
-    // Color del texto según el estado
     val colorTexto = when (estado) {
         "Pendiente" ->
             MaterialTheme.colorScheme.onSecondaryContainer

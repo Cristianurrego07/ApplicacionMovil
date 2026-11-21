@@ -25,12 +25,10 @@ fun BotonSecundario(
         modifier = modifier,
         shape = EstilosBoton.forma,
 
-        // Color del texto y los íconos
         colors = ButtonDefaults.outlinedButtonColors(
             contentColor = MaterialTheme.colorScheme.primary
         ),
 
-        // Color y grosor del borde
         border = BorderStroke(
             width = 1.dp,
             color = MaterialTheme.colorScheme.primary

@@ -52,7 +52,6 @@ fun ControlesFotoPerfil(
         mutableStateOf(false)
     }
 
-    // Muestra un mensaje y, si corresponde, permite abrir ajustes.
     fun avisar(
         mensaje: String,
         permisoDenegado: Boolean = false
@@ -70,7 +69,6 @@ fun ControlesFotoPerfil(
         }
     }
 
-    // Convierte la imagen y solicita guardarla.
     fun guardar(obtener: () -> Bitmap?) {
         scope.launch {
             guardando = true
@@ -89,7 +87,6 @@ fun ControlesFotoPerfil(
         }
     }
 
-    // Recibe la foto tomada con la cámara.
     val camara = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview()
     ) { foto ->
@@ -124,7 +121,6 @@ fun ControlesFotoPerfil(
         }
     }
 
-    // Recibe la imagen seleccionada desde la galería.
     val galeria = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { resultado ->
@@ -184,7 +180,6 @@ fun ControlesFotoPerfil(
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Botón de cámara
             OutlinedButton(
                 enabled = !guardando,
                 onClick = {
@@ -211,7 +206,6 @@ fun ControlesFotoPerfil(
                 Text(text = " Cámara")
             }
 
-            // Botón de galería
             OutlinedButton(
                 enabled = !guardando,
                 onClick = {

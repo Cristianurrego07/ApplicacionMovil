@@ -88,7 +88,6 @@ class RecuperarContrasenaViewModel : ViewModel() {
         return errorCorreo == null
     }
 
-    // Se llama cuando el microservicio confirma la solicitud.
     fun codigoSolicitado() {
         _uiState.update {
             it.copy(
@@ -122,7 +121,6 @@ class RecuperarContrasenaViewModel : ViewModel() {
         return errorCodigo == null
     }
 
-    // Se llama cuando el microservicio confirma el código.
     fun codigoVerificado() {
         _uiState.update {
             it.copy(
@@ -184,7 +182,6 @@ class RecuperarContrasenaViewModel : ViewModel() {
                 errorConfirmarContrasena == null
     }
 
-    // Se llama cuando el microservicio confirma el cambio.
     fun contrasenaRestablecida() {
         _uiState.update {
             it.copy(
