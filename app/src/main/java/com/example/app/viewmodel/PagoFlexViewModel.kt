@@ -22,7 +22,6 @@ class PagoFlexViewModel(
     private val db = PagoFlexDbHelper(application)
     private val sesion = SesionPreferencias(application)
 
-    // Estados que observan las pantallas
     private val _usuarioActual = MutableStateFlow<Usuario?>(null)
     val usuarioActual: StateFlow<Usuario?> = _usuarioActual.asStateFlow()
 
@@ -35,7 +34,6 @@ class PagoFlexViewModel(
     private val _reportes = MutableStateFlow<List<Reporte>>(emptyList())
     val reportes: StateFlow<List<Reporte>> = _reportes.asStateFlow()
 
-    // Ejecuta una escritura y devuelve un valor de fallo si ocurre un error.
     private fun <T> escritura(
         fallo: T,
         accion: () -> T
@@ -47,7 +45,6 @@ class PagoFlexViewModel(
         }
     }
 
-    // Sesión
     fun guardarSesion(id: Long) {
         sesion.guardar(id)
     }
@@ -85,7 +82,6 @@ class PagoFlexViewModel(
         _reportes.value = emptyList()
     }
 
-    // Usuarios y perfil
     fun registrarUsuario(
         usuario: Usuario,
         clave: String
@@ -130,10 +126,22 @@ class PagoFlexViewModel(
         }
     }
 
-    // Compromisos
     fun listarCompromisos(id: Long? = null): List<Compromiso> {
         return db.listarCompromisos(id)
     }
+
+    fun listarCompromisosEjecutivo(id: Long): List<Compromiso> = db.listarCompromisosEjecutivo(id)
+
+    fun montosPagadosEjecutivo(id: Long): Map<String, Int> = db.montosPagadosEjecutivo(id)
+
+    fun registrarCompromisoEjecutivo(id: Long, rut: String, concepto: String, monto: Int, fecha: String, cuota: String): Boolean =
+        escritura(false) { db.registrarCompromisoEjecutivo(id, rut, concepto, monto, fecha, cuota) }
+
+    fun modificarCuotaEjecutivo(id: Long, folio: String, monto: Int, fecha: String): Boolean =
+        escritura(false) { db.modificarCuotaEjecutivo(id, folio, monto, fecha) }
+
+    fun anularCompromisoEjecutivo(id: Long, folio: String, motivo: String): Boolean =
+        escritura(false) { db.anularCompromisoEjecutivo(id, folio, motivo) }
 
     fun cargarCompromisos(compromisos: List<Compromiso>) {
         _compromisos.value = compromisos
@@ -148,7 +156,6 @@ class PagoFlexViewModel(
         }
     }
 
-    // Servicios
     fun listarServicios(id: Long): List<Servicio> {
         return db.listarServicios(id)
     }
@@ -163,16 +170,25 @@ class PagoFlexViewModel(
         }
     }
 
+    fun esEmpresaGestionada(nombre: String): Boolean = db.esEmpresaGestionada(nombre)
+
+    fun crearCuotasServicio(usuarioId: Long, folio: String, cantidad: Int): Boolean =
+        escritura(false) { db.crearCuotasServicio(usuarioId, folio, cantidad) }
+
+    fun aplazarCuotaServicio(usuarioId: Long, folio: String): Boolean =
+        escritura(false) { db.aplazarCuotaServicio(usuarioId, folio) }
+
     fun agregarServicio(servicio: Servicio) {
         _servicios.update { lista ->
             listOf(servicio) + lista
         }
     }
 
-    // Reportes
     fun listarReportes(): List<Reporte> {
         return db.listarReportes()
     }
+
+    fun listarReportesEjecutivo(id: Long): List<Reporte> = db.listarReportesEjecutivo(id)
 
     fun cargarReportes(reportes: List<Reporte>) {
         _reportes.value = reportes
@@ -198,14 +214,14 @@ class PagoFlexViewModel(
 
     fun resolverReporte(
         folio: String,
-        estado: String
+        estado: String,
+        respuesta: String
     ): Boolean {
         return escritura(false) {
-            db.resolverReporte(folio, estado)
+            db.resolverReporte(folio, estado, respuesta)
         }
     }
 
-    // Pagos y comprobantes
     fun confirmarPago(
         folio: String,
         medio: String

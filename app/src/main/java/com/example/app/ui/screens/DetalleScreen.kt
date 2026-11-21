@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -25,6 +26,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -37,6 +39,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.app.R
+import com.example.app.model.AplazamientoCuota
 import com.example.app.model.Compromiso
 import com.example.app.model.Usuario
 import com.example.app.ui.components.BotonPrincipal
@@ -54,10 +57,19 @@ fun DetalleScreen(
     compromiso: Compromiso,
     onVolver: () -> Unit,
     onPagar: (String) -> Boolean,
-    onReportar: (String) -> Boolean
+    onReportar: (String) -> Boolean,
+    saldoPlan: Int? = null,
+    montoPagado: Int? = null,
+    onVerComprobante: (() -> Unit)? = null,
+    onCrearCuotas: ((Int) -> Boolean)? = null,
+    onAplazarCuota: (() -> Boolean)? = null
 ) {
     var mostrarConfirmacion by remember { mutableStateOf(false) }
     var mostrarReporte by remember { mutableStateOf(false) }
+    var mostrarCuotas by remember { mutableStateOf(false) }
+    var mostrarAplazamiento by remember { mutableStateOf(false) }
+    var cantidadCuotas by remember { mutableIntStateOf(2) }
+    var errorCuotas by remember { mutableStateOf<String?>(null) }
 
     var motivo by remember { mutableStateOf("") }
     var errorReporte by remember { mutableStateOf<String?>(null) }
@@ -66,8 +78,11 @@ fun DetalleScreen(
     val vencido = compromiso.estado == "Vencido"
     val puedePagar = compromiso.estado == "Pendiente" || vencido
 
-    val total = compromiso.monto +
-            if (vencido) compromiso.recargo else 0
+    val total = if (compromiso.estado == "Pagado" && montoPagado != null) {
+        montoPagado
+    } else {
+        compromiso.monto + if (vencido) compromiso.recargo else 0
+    }
 
     val formatoMonto = NumberFormat.getIntegerInstance(
         Locale.forLanguageTag("es-CL")
@@ -152,6 +167,13 @@ fun DetalleScreen(
                         valor = compromiso.concepto
                     )
 
+                    if (compromiso.numeroCuota.isNotBlank()) {
+                        FilaDetalleCompromiso(
+                            etiqueta = "Cuota",
+                            valor = compromiso.numeroCuota
+                        )
+                    }
+
                     FilaDetalleCompromiso(
                         etiqueta = "Vencimiento",
                         valor = fechaVisible(compromiso.vencimiento)
@@ -178,16 +200,53 @@ fun DetalleScreen(
                         )
                     }
 
+                    if (compromiso.estado == "Pagado" && montoPagado != null && montoPagado > compromiso.monto) {
+                        FilaDetalleCompromiso(
+                            etiqueta = "Recargo pagado",
+                            valor = "$" + formatoMonto.format(montoPagado - compromiso.monto)
+                        )
+                    }
+
                     HorizontalDivider()
 
                     FilaDetalleCompromiso(
-                        etiqueta = "Total",
+                        etiqueta = if (compromiso.estado == "Pagado") "Total pagado" else "Total",
                         valor = "$" + formatoMonto.format(total),
                         destacado = true
                     )
                 }
 
+                if (compromiso.estado == "Pagado" && onVerComprobante != null) {
+                    BotonPrincipal(
+                        texto = "Ver comprobante",
+                        onClick = onVerComprobante,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                if (saldoPlan != null) {
+                    Text(
+                        text = "Saldo pendiente del plan: $" + formatoMonto.format(saldoPlan),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+
                 if (puedePagar) {
+                    if (onCrearCuotas != null) {
+                        BotonSecundario(
+                            texto = "Elegir cuotas",
+                            onClick = { errorCuotas = null; mostrarCuotas = true },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                    if (onAplazarCuota != null) {
+                        BotonSecundario(
+                            texto = "Aplazar cuota",
+                            onClick = { errorCuotas = null; mostrarAplazamiento = true },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                     BotonPrincipal(
                         texto = "Pagar $" + formatoMonto.format(total),
                         onClick = {
@@ -226,6 +285,80 @@ fun DetalleScreen(
                 }
             }
         }
+    }
+
+    if (mostrarCuotas && onCrearCuotas != null) {
+        AlertDialog(
+            onDismissRequest = { mostrarCuotas = false },
+            title = { Text("Elegir cuotas") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Total a dividir: $" + formatoMonto.format(total))
+                    Text("Selecciona la cantidad de cuotas mensuales:")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(2, 3, 6, 12).forEach { cantidad ->
+                            FilterChip(
+                                selected = cantidadCuotas == cantidad,
+                                onClick = { cantidadCuotas = cantidad; errorCuotas = null },
+                                label = { Text(cantidad.toString()) }
+                            )
+                        }
+                    }
+                    val montoBase = total / cantidadCuotas
+                    val resto = total % cantidadCuotas
+                    Text("Cada cuota: desde $" + formatoMonto.format(montoBase))
+                    if (resto > 0) Text("$resto cuota(s) tendrán $1 adicional por el redondeo.")
+                    if (vencido) Text("El recargo está incluido y la primera cuota vencerá hoy.")
+                    errorCuotas?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (onCrearCuotas(cantidadCuotas)) {
+                        mostrarCuotas = false
+                    } else {
+                        errorCuotas = "No se pudo crear el plan. Revisa que el compromiso no tenga pagos ni reportes."
+                    }
+                }) { Text("Confirmar") }
+            },
+            dismissButton = { TextButton(onClick = { mostrarCuotas = false }) { Text("Cancelar") } }
+        )
+    }
+
+    if (mostrarAplazamiento && onAplazarCuota != null) {
+        val nuevoMonto = AplazamientoCuota.montoConRecargo(compromiso.monto)
+        val recargoAplazamiento = nuevoMonto - compromiso.monto
+        val fechaSiguiente = try {
+            val formato = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { isLenient = false }
+            val siguiente = AplazamientoCuota.mesSiguiente(compromiso.vencimiento)
+            val fecha = formato.parse(siguiente)!!
+            SimpleDateFormat("dd/MM/yyyy", Locale.forLanguageTag("es-CL")).format(fecha)
+        } catch (_: Exception) { "No disponible" }
+
+        AlertDialog(
+            onDismissRequest = { mostrarAplazamiento = false },
+            title = { Text("Aplazar cuota") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Monto actual: $" + formatoMonto.format(compromiso.monto))
+                    Text("Recargo de prueba (2 %): $" + formatoMonto.format(recargoAplazamiento))
+                    Text("Nuevo monto: $" + formatoMonto.format(nuevoMonto))
+                    Text("Nuevo vencimiento: $fechaSiguiente")
+                    Text("Las cuotas posteriores también se moverán un mes. Puedes solicitar esta opción una vez por cuota pendiente.")
+                    errorCuotas?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (onAplazarCuota()) {
+                        mostrarAplazamiento = false
+                    } else {
+                        errorCuotas = "No se pudo aplazar. Revisa que esta cuota no se haya aplazado antes y que las posteriores estén pendientes y sin reportes."
+                    }
+                }) { Text("Confirmar") }
+            },
+            dismissButton = { TextButton(onClick = { mostrarAplazamiento = false }) { Text("Cancelar") } }
+        )
     }
 
     if (mostrarConfirmacion) {

@@ -6,6 +6,9 @@ import android.content.Context
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import com.example.app.model.AplazamientoCuota
+import com.example.app.model.CatalogoServicios
+import com.example.app.model.PlanCuotas
 import com.example.app.model.Rol
 import com.example.app.model.Comprobante
 import com.example.app.model.Compromiso
@@ -13,13 +16,12 @@ import com.example.app.model.Servicio
 import com.example.app.model.Usuario
 import com.example.app.model.Reporte
 
-
 class PagoFlexDbHelper(context: Context) :
     SQLiteOpenHelper(context, NOMBRE_BD, null, VERSION_BD) {
 
     companion object {
         private const val NOMBRE_BD = "PagoFlex.db"
-        private const val VERSION_BD = 18
+        private const val VERSION_BD = 27
         private const val TABLA_ROLES = "roles"
         private const val TABLA_USUARIOS = "usuarios"
         private const val TABLA_SERVICIOS = "servicios"
@@ -90,7 +92,7 @@ class PagoFlexDbHelper(context: Context) :
                     "$NOMBRE_EMPRESA TEXT NOT NULL, $CONCEPTO TEXT NOT NULL, " +
                     "$MONTO INTEGER NOT NULL CHECK($MONTO > 0), " +
                     "$VENCIMIENTO TEXT NOT NULL, $ESTADO TEXT NOT NULL, " +
-                    "$RECARGO INTEGER NOT NULL DEFAULT 0, $NUMERO_CUOTA TEXT NOT NULL DEFAULT '')"
+                    "$RECARGO INTEGER NOT NULL DEFAULT 0, $NUMERO_CUOTA TEXT NOT NULL DEFAULT '', plan_id TEXT NOT NULL DEFAULT '')"
 
         private const val SQL_CREAR_PAGOS =
             "CREATE TABLE $TABLA_PAGOS (" +
@@ -106,7 +108,7 @@ class PagoFlexDbHelper(context: Context) :
                     "$FOLIO TEXT NOT NULL UNIQUE REFERENCES $TABLA_COMPROMISOS($FOLIO), " +
                     "$MOTIVO_REPORTE TEXT NOT NULL, " +
                     "$ESTADO_REPORTE TEXT NOT NULL DEFAULT 'Pendiente', " +
-                    "$FECHA_REPORTE TEXT NOT NULL)"
+                    "$FECHA_REPORTE TEXT NOT NULL, respuesta TEXT)"
 
         private const val SQL_PROTEGER_PAGOS_UPDATE =
             "CREATE TRIGGER IF NOT EXISTS pagos_sin_modificacion " +
@@ -124,9 +126,7 @@ class PagoFlexDbHelper(context: Context) :
             "INSERT INTO $TABLA_USUARIOS ($RUT, $NOMBRE, $CORREO, $CONTRASENA, $ID_ROL) VALUES " +
                     "('20.435.214-5', 'Sofia Perez', 'sofia@gmail.com', 'cli123', 1), " +
                     "('10.625.244-K', 'Matias Sanchez', 'matias@pagoflex.com', 'age123', 2), " +
-                    "('12.345.678-9', 'Carla Ejecutivo', 'carla@empresa.com', 'eje123', 3)"
-
-
+                    "('12.345.678-9', 'Carla Ejecutivo', 'carla@duocuc.cl', 'eje123', 3)"
 
         private const val SQL_PRECARGAR_COMPROMISOS_CLIENTE =
             "INSERT OR IGNORE INTO $TABLA_COMPROMISOS " +
@@ -166,11 +166,15 @@ class PagoFlexDbHelper(context: Context) :
         db.execSQL(SQL_CREAR_COMPROMISOS)
         db.execSQL(SQL_CREAR_PAGOS)
         db.execSQL(SQL_CREAR_REPORTES)
+        crearTablaAplazamientos(db)
         db.execSQL(SQL_PROTEGER_PAGOS_UPDATE)
         db.execSQL(SQL_PROTEGER_PAGOS_DELETE)
         db.execSQL(SQL_PRECARGAR_ROLES)
         db.execSQL(SQL_PRECARGAR_USUARIOS)
+        crearDatosEjecutivo(db)
         db.execSQL(SQL_PRECARGAR_COMPROMISOS_CLIENTE)
+        precargarMensualidadesSofia(db)
+        precargarPendientesSofia(db)
         db.execSQL(
             "INSERT INTO $TABLA_SERVICIOS ($ID_USUARIO, $NOMBRE_EMPRESA, $RUT_PAGADOR, $ALIAS) " +
                     "VALUES (1, 'Enel', '20.435.214-5', 'Cuenta de electricidad')"
@@ -220,6 +224,9 @@ class PagoFlexDbHelper(context: Context) :
         if (oldVersion < 11) {
             db.execSQL(SQL_CREAR_REPORTES)
         }
+        if (oldVersion in 11..26) {
+            db.execSQL("ALTER TABLE $TABLA_REPORTES ADD COLUMN respuesta TEXT")
+        }
         if (oldVersion < 15 && newVersion >= 15) {
             db.execSQL("ALTER TABLE $TABLA_USUARIOS ADD COLUMN avatar BLOB")
         }
@@ -233,23 +240,60 @@ class PagoFlexDbHelper(context: Context) :
             db.execSQL("DELETE FROM $TABLA_ROLES WHERE $NOMBRE_ROL = 'EJECUTIVO'")
         }
         if (oldVersion < 18) {
-            // Asegura que el rol EJECUTIVO y el usuario demo existan (arreglo desde Main)
             db.execSQL(
                 "INSERT OR IGNORE INTO $TABLA_ROLES ($ID_ROL, $NOMBRE_ROL) VALUES (3, 'EJECUTIVO')"
             )
             db.execSQL(
                 "INSERT OR IGNORE INTO $TABLA_USUARIOS ($RUT, $NOMBRE, $CORREO, $CONTRASENA, $ID_ROL) " +
-                "VALUES ('12.345.678-9', 'Carla Ejecutivo', 'carla@empresa.com', 'eje123', 3)"
+                "VALUES ('12.345.678-9', 'Carla Ejecutivo', 'carla@duocuc.cl', 'eje123', 3)"
             )
-            // Compromisos de ejemplo visibles para el ejecutivo (cobranza de empresa)
+        }
+        if (oldVersion < 19) {
+            crearDatosEjecutivo(db)
+        }
+        if (oldVersion < 20) {
+            precargarMensualidadesSofia(db)
+        }
+        if (oldVersion < 22) {
+            precargarPendientesSofia(db)
+        }
+        if (oldVersion < 26) {
+            crearTablaAplazamientos(db)
+        }
+        if (oldVersion < 25) {
             db.execSQL(
-                "INSERT OR IGNORE INTO $TABLA_COMPROMISOS " +
-                "($FOLIO, $ID_USUARIO, $NOMBRE_EMPRESA, $CONCEPTO, $MONTO, $VENCIMIENTO, $ESTADO, $RECARGO) VALUES " +
-                "('PF-EMP-001', 1, 'Duoc Uc', 'Mensualidad empresa', 890000, date('now', '+10 days'), 'Pendiente', 15000)"
+                "UPDATE $TABLA_USUARIOS SET $CORREO = ? WHERE LOWER($CORREO) = ? AND $ID_ROL = 3 " +
+                    "AND NOT EXISTS (SELECT 1 FROM $TABLA_USUARIOS WHERE LOWER($CORREO) = ?)",
+                arrayOf("carla@duocuc.cl", "carla@empresa.com", "carla@duocuc.cl")
+            )
+        }
+        if (oldVersion < 24) {
+            db.execSQL("ALTER TABLE $TABLA_COMPROMISOS ADD COLUMN plan_id TEXT NOT NULL DEFAULT ''")
+        }
+        if (oldVersion < 23) {
+            db.execSQL(
+                "DELETE FROM $TABLA_COMPROMISOS WHERE $FOLIO = ? AND $CONCEPTO = ? " +
+                    "AND NOT EXISTS (SELECT 1 FROM $TABLA_PAGOS WHERE $FOLIO = ?) " +
+                    "AND NOT EXISTS (SELECT 1 FROM $TABLA_REPORTES WHERE $FOLIO = ?)",
+                arrayOf("PF-DEMO-PEND-1", "Materiales de estudio", "PF-DEMO-PEND-1", "PF-DEMO-PEND-1")
+            )
+            db.execSQL(
+                "UPDATE $TABLA_COMPROMISOS SET $MONTO = ? WHERE $FOLIO = ? AND $CONCEPTO = ? " +
+                    "AND $MONTO = ? AND $ESTADO IN ('Pendiente', 'Vencido') " +
+                    "AND NOT EXISTS (SELECT 1 FROM $TABLA_PAGOS WHERE $FOLIO = ?) " +
+                    "AND NOT EXISTS (SELECT 1 FROM $TABLA_REPORTES WHERE $FOLIO = ?)",
+                arrayOf<Any>(182000, "PF-DEMO-PEND-3", "Matrícula", 45000, "PF-DEMO-PEND-3", "PF-DEMO-PEND-3")
+            )
+        }
+        if (oldVersion < 21) {
+            db.execSQL(
+                "DELETE FROM $TABLA_COMPROMISOS WHERE $FOLIO = ? AND $MONTO = ? " +
+                    "AND $CONCEPTO = ? AND NOT EXISTS (SELECT 1 FROM $TABLA_PAGOS WHERE $FOLIO = ?) " +
+                    "AND NOT EXISTS (SELECT 1 FROM $TABLA_REPORTES WHERE $FOLIO = ?)",
+                arrayOf<Any>("PF-EMP-001", 890000, "Mensualidad empresa", "PF-EMP-001", "PF-EMP-001")
             )
         }
         if (oldVersion < 16) {
-            // Actualiza solo las fechas originales de los ejemplos de Sofía.
             val ejemplos = listOf(
                 Triple("PF-UNI-001", "2026-10-25", "+7 days"),
                 Triple("PF-LUZ-001", "2026-10-20", "-7 days"),
@@ -267,7 +311,6 @@ class PagoFlexDbHelper(context: Context) :
             }
         }
         if (oldVersion < 17) {
-            // Fechas de ejemplo de Sofía, sin modificar compromisos pagados.
             val fechas = listOf(
                 "PF-UNI-001" to "2026-11-19",
                 "PF-LUZ-001" to "2026-11-25",
@@ -285,18 +328,238 @@ class PagoFlexDbHelper(context: Context) :
         }
     }
 
+    private fun precargarMensualidadesSofia(db: SQLiteDatabase) {
+        val usuarioId = db.rawQuery(
+            "SELECT $ID_USUARIO FROM $TABLA_USUARIOS WHERE LOWER($CORREO) = ? AND $ID_ROL = 1",
+            arrayOf("sofia@gmail.com")
+        ).use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else return }
+
+        for (mes in 7..10) {
+            val numeroMes = mes.toString().padStart(2, '0')
+            val folio = "PF-DEMO-DUOC-2026-$numeroMes"
+            val fechaVencimiento = "2026-$numeroMes-19"
+            val fechaPago = "2026-$numeroMes-15 12:00:00"
+
+            val compromiso = ContentValues().apply {
+                put(FOLIO, folio)
+                put(ID_USUARIO, usuarioId)
+                put(NOMBRE_EMPRESA, "Duoc Uc")
+                put(CONCEPTO, "Mensualidad")
+                put(MONTO, 356000)
+                put(VENCIMIENTO, fechaVencimiento)
+                put(ESTADO, "Pagado")
+                put(NUMERO_CUOTA, "$mes/12")
+            }
+            val creado = db.insertWithOnConflict(TABLA_COMPROMISOS, null, compromiso, SQLiteDatabase.CONFLICT_IGNORE)
+            if (creado != -1L) {
+                val comprobante = ContentValues().apply {
+                    put(NUMERO_COMPROBANTE, "CPR-DEMO-2026-$numeroMes")
+                    put(FOLIO, folio)
+                    put(NOMBRE_EMPRESA, "Duoc Uc")
+                    put(CONCEPTO, "Mensualidad")
+                    put(MONTO_PAGADO, 356000)
+                    put(FECHA_HORA, fechaPago)
+                    put(CANAL, "App")
+                    put(MEDIO_PAGO, "Tarjeta de débito")
+                }
+                check(db.insertOrThrow(TABLA_PAGOS, null, comprobante) != -1L)
+            }
+        }
+
+        val diciembre = ContentValues().apply {
+            put(FOLIO, "PF-DEMO-DUOC-2026-12")
+            put(ID_USUARIO, usuarioId)
+            put(NOMBRE_EMPRESA, "Duoc Uc")
+            put(CONCEPTO, "Mensualidad")
+            put(MONTO, 356000)
+            put(VENCIMIENTO, "2026-12-19")
+            put(ESTADO, "Pendiente")
+            put(RECARGO, 7000)
+            put(NUMERO_CUOTA, "12/12")
+        }
+        db.insertWithOnConflict(TABLA_COMPROMISOS, null, diciembre, SQLiteDatabase.CONFLICT_IGNORE)
+    }
+
+    private fun precargarPendientesSofia(db: SQLiteDatabase) {
+        val usuarioId = db.rawQuery(
+            "SELECT $ID_USUARIO FROM $TABLA_USUARIOS WHERE LOWER($CORREO) = ? AND $ID_ROL = 1",
+            arrayOf("sofia@gmail.com")
+        ).use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else return }
+
+        val ejemplos = listOf(
+            "PF-DEMO-PEND-2" to Triple("Biblioteca", 15000, "2026-11-30"),
+            "PF-DEMO-PEND-3" to Triple("Matrícula", 182000, "2026-12-10"),
+            "PF-DEMO-PEND-4" to Triple("Certificado", 10000, "2026-12-20")
+        )
+        ejemplos.forEach { (folio, datos) ->
+            val (concepto, monto, fecha) = datos
+            val valores = ContentValues().apply {
+                put(FOLIO, folio)
+                put(ID_USUARIO, usuarioId)
+                put(NOMBRE_EMPRESA, "Duoc Uc")
+                put(CONCEPTO, concepto)
+                put(MONTO, monto)
+                put(VENCIMIENTO, fecha)
+                put(ESTADO, "Pendiente")
+            }
+            db.insertWithOnConflict(TABLA_COMPROMISOS, null, valores, SQLiteDatabase.CONFLICT_IGNORE)
+        }
+    }
+
+    private fun crearTablaAplazamientos(db: SQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS aplazamientos_cuota (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, operacion TEXT NOT NULL, " +
+                "folio TEXT NOT NULL REFERENCES compromisos(folio), usuario_id INTEGER NOT NULL REFERENCES usuarios(id_usuario), " +
+                "fecha_anterior TEXT NOT NULL, fecha_nueva TEXT NOT NULL, " +
+                "monto_anterior INTEGER NOT NULL, monto_nuevo INTEGER NOT NULL, " +
+                "solicitada INTEGER NOT NULL, fecha_accion TEXT NOT NULL)"
+        )
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS aplazamiento_unico ON aplazamientos_cuota(folio) WHERE solicitada = 1")
+    }
+
+    private fun crearDatosEjecutivo(db: SQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS ejecutivo_empresa (id_usuario INTEGER PRIMARY KEY REFERENCES usuarios(id_usuario), empresa TEXT NOT NULL)")
+        db.execSQL("CREATE TABLE IF NOT EXISTS acciones_ejecutivo (id INTEGER PRIMARY KEY AUTOINCREMENT, folio TEXT NOT NULL, ejecutivo_id INTEGER NOT NULL, accion TEXT NOT NULL, motivo TEXT, fecha TEXT NOT NULL)")
+        db.execSQL("INSERT OR IGNORE INTO ejecutivo_empresa (id_usuario, empresa) SELECT id_usuario, 'Duoc Uc' FROM usuarios WHERE LOWER(correo) IN ('carla@empresa.com', 'carla@duocuc.cl') AND id_rol = 3")
+    }
+
+    fun empresaEjecutivo(id: Long): String? = readableDatabase.rawQuery(
+        "SELECT e.empresa FROM ejecutivo_empresa e JOIN usuarios u ON u.id_usuario = e.id_usuario JOIN roles r ON r.id_rol = u.id_rol WHERE e.id_usuario = ? AND r.nombre_rol = 'EJECUTIVO'",
+        arrayOf(id.toString())
+    ).use { if (it.moveToFirst()) it.getString(0) else null }
+
+    fun listarCompromisosEjecutivo(id: Long): List<Compromiso> {
+        val empresa = empresaEjecutivo(id) ?: return emptyList()
+        return listarCompromisos(empresa = empresa)
+    }
+
+    fun montosPagadosEjecutivo(id: Long): Map<String, Int> {
+        val empresa = empresaEjecutivo(id) ?: return emptyMap()
+        val montos = mutableMapOf<String, Int>()
+        readableDatabase.rawQuery(
+            "SELECT p.folio, p.monto_pagado FROM pagos p JOIN compromisos c ON c.folio = p.folio WHERE c.nombre_empresa = ? COLLATE NOCASE",
+            arrayOf(empresa)
+        ).use { cursor -> while (cursor.moveToNext()) montos[cursor.getString(0)] = cursor.getInt(1) }
+        return montos
+    }
+
+    fun registrarCompromisoEjecutivo(id: Long, rut: String, concepto: String, monto: Int, fecha: String, cuota: String): Boolean {
+        val empresa = empresaEjecutivo(id) ?: return false
+        if (!Validaciones.rutValido(rut) || concepto.isBlank() || monto <= 0) return false
+        val formatoFecha = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).apply { isLenient = false }
+        val fechaValida = try {
+            fecha.matches(Regex("""[0-9]{4}-[0-9]{2}-[0-9]{2}""")) &&
+                formatoFecha.parse(fecha) != null && fecha >= formatoFecha.format(java.util.Date())
+        } catch (_: Exception) { false }
+        if (!fechaValida) return false
+        val cantidadCuotas = if (cuota.isBlank()) 1 else cuota.toIntOrNull() ?: return false
+        if (cantidadCuotas !in 1..120 || monto < cantidadCuotas) return false
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val persona = db.rawQuery(
+                "SELECT id_usuario FROM usuarios WHERE REPLACE(REPLACE(UPPER(rut), '.', ''), '-', '') = ? AND id_rol = 1",
+                arrayOf(Validaciones.normalizarRut(rut))
+            ).use { if (it.moveToFirst()) it.getLong(0) else return false }
+            val cuotas = PlanCuotas.calcular(monto, cantidadCuotas, fecha)
+            val planId = if (cuota.isBlank()) "" else java.util.UUID.randomUUID().toString()
+
+            for (cuotaCalculada in cuotas) {
+                val numero = if (cuota.isBlank()) "" else "${cuotaCalculada.numero}/$cantidadCuotas"
+                val existe = db.rawQuery(
+                    "SELECT 1 FROM compromisos WHERE id_usuario = ? AND nombre_empresa = ? COLLATE NOCASE AND concepto = ? COLLATE NOCASE AND numero_cuota = ?",
+                    arrayOf(persona.toString(), empresa, concepto, numero)
+                ).use { it.moveToFirst() }
+                if (existe) return false
+
+                val folio = "PF-" + java.util.UUID.randomUUID().toString().take(12).uppercase()
+                val valores = ContentValues().apply {
+                    put("folio", folio)
+                    put("id_usuario", persona)
+                    put("nombre_empresa", empresa)
+                    put("concepto", concepto)
+                    put("monto", cuotaCalculada.monto)
+                    put("vencimiento", cuotaCalculada.vencimiento)
+                    put("estado", "Pendiente")
+                    put("numero_cuota", numero)
+                    put("plan_id", planId)
+                }
+                if (db.insert("compromisos", null, valores) == -1L) return false
+                db.execSQL(
+                    "INSERT INTO acciones_ejecutivo (folio, ejecutivo_id, accion, fecha) VALUES (?, ?, 'Registro', datetime('now', 'localtime'))",
+                    arrayOf<Any>(folio, id)
+                )
+            }
+            db.setTransactionSuccessful()
+            return true
+        } finally { db.endTransaction() }
+    }
+
+    fun modificarCuotaEjecutivo(id: Long, folio: String, monto: Int, fecha: String): Boolean {
+        val empresa = empresaEjecutivo(id) ?: return false
+        if (monto <= 0 || !fecha.matches(Regex("""[0-9]{4}-[0-9]{2}-[0-9]{2}"""))) return false
+        val formato = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).apply { isLenient = false }
+        val fechaValida = try { formato.parse(fecha) != null && fecha >= formato.format(java.util.Date()) } catch (_: Exception) { false }
+        if (!fechaValida) return false
+
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val datos = db.rawQuery(
+                "SELECT plan_id, numero_cuota FROM compromisos WHERE folio = ? AND nombre_empresa = ? COLLATE NOCASE AND estado IN ('Pendiente', 'Vencido') AND numero_cuota <> ''",
+                arrayOf(folio, empresa)
+            ).use { if (it.moveToFirst()) it.getString(0) to it.getString(1) else return false }
+            val numero = datos.second.substringBefore('/').toIntOrNull() ?: return false
+            if (datos.first.isNotBlank()) {
+                val fueraDeOrden = db.rawQuery(
+                    "SELECT 1 FROM compromisos WHERE plan_id = ? AND folio <> ? AND estado <> 'Anulado' AND ((CAST(substr(numero_cuota, 1, instr(numero_cuota, '/') - 1) AS INTEGER) < ? AND vencimiento >= ?) OR (CAST(substr(numero_cuota, 1, instr(numero_cuota, '/') - 1) AS INTEGER) > ? AND vencimiento <= ?)) LIMIT 1",
+                    arrayOf(datos.first, folio, numero.toString(), fecha, numero.toString(), fecha)
+                ).use { it.moveToFirst() }
+                if (fueraDeOrden) return false
+            }
+            val valores = ContentValues().apply { put("monto", monto); put("vencimiento", fecha); put("estado", "Pendiente") }
+            if (db.update("compromisos", valores, "folio = ? AND nombre_empresa = ? COLLATE NOCASE AND estado IN ('Pendiente', 'Vencido')", arrayOf(folio, empresa)) != 1) return false
+            db.execSQL(
+                "INSERT INTO acciones_ejecutivo (folio, ejecutivo_id, accion, fecha) VALUES (?, ?, 'Modificación de cuota', datetime('now', 'localtime'))",
+                arrayOf<Any>(folio, id)
+            )
+            db.setTransactionSuccessful()
+            return true
+        } finally { db.endTransaction() }
+    }
+
+    fun anularCompromisoEjecutivo(id: Long, folio: String, motivo: String): Boolean {
+        val empresa = empresaEjecutivo(id) ?: return false
+        if (motivo.isBlank()) return false
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val valores = ContentValues().apply { put("estado", "Anulado") }
+            val actualizados = db.update("compromisos", valores, "folio = ? AND nombre_empresa = ? COLLATE NOCASE AND estado IN ('Pendiente', 'Vencido', 'En revisión')", arrayOf(folio, empresa))
+            if (actualizados != 1) return false
+            db.execSQL("INSERT INTO acciones_ejecutivo (folio, ejecutivo_id, accion, motivo, fecha) VALUES (?, ?, 'Anulación', ?, datetime('now', 'localtime'))", arrayOf<Any>(folio, id, motivo))
+            db.setTransactionSuccessful()
+            return true
+        } finally { db.endTransaction() }
+    }
+
     override fun onDowngrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion >= 8 && newVersion >= 7) return
         super.onDowngrade(db, oldVersion, newVersion)
     }
 
-    fun listarCompromisos(idUsuario: Long? = null): List<Compromiso> {
+    fun listarCompromisos(idUsuario: Long? = null, empresa: String? = null): List<Compromiso> {
         val lista = mutableListOf<Compromiso>()
         val foliosVencidos = mutableListOf<String>()
-        val filtro = if (idUsuario == null) "" else "WHERE c.$ID_USUARIO = ?"
-        val argumentos = if (idUsuario == null) null else arrayOf(idUsuario.toString())
+        val condiciones = mutableListOf<String>()
+        val valores = mutableListOf<String>()
+        if (idUsuario != null) { condiciones.add("c.$ID_USUARIO = ?"); valores.add(idUsuario.toString()) }
+        if (empresa != null) { condiciones.add("c.$NOMBRE_EMPRESA = ? COLLATE NOCASE"); valores.add(empresa) }
+        val filtro = if (condiciones.isEmpty()) "" else "WHERE " + condiciones.joinToString(" AND ")
+        val argumentos = if (valores.isEmpty()) null else valores.toTypedArray()
         readableDatabase.rawQuery(
-            "SELECT c.*, u.$RUT, u.$NOMBRE, u.$CORREO, u.$ID_ROL, r.$NOMBRE_ROL AS $NOMBRE_ROL " +
+            "SELECT c.*, u.$RUT, u.$NOMBRE, u.$CORREO, u.telefono, u.$ID_ROL, r.$NOMBRE_ROL AS $NOMBRE_ROL " +
                     "FROM $TABLA_COMPROMISOS c " +
                     "INNER JOIN $TABLA_USUARIOS u ON c.$ID_USUARIO = u.$ID_USUARIO " +
                     "INNER JOIN $TABLA_ROLES r ON u.$ID_ROL = r.$ID_ROL " +
@@ -319,6 +582,7 @@ class PagoFlexDbHelper(context: Context) :
                             rut = cursor.getString(cursor.getColumnIndexOrThrow(RUT)),
                             nombre = cursor.getString(cursor.getColumnIndexOrThrow(NOMBRE)),
                             correo = cursor.getString(cursor.getColumnIndexOrThrow(CORREO)),
+                            telefono = cursor.getString(cursor.getColumnIndexOrThrow("telefono")),
                             rolId = cursor.getLong(cursor.getColumnIndexOrThrow(ID_ROL)),
                             rolNombre = cursor.getString(cursor.getColumnIndexOrThrow(NOMBRE_ROL))
                         ),
@@ -327,7 +591,8 @@ class PagoFlexDbHelper(context: Context) :
                         vencimiento = vencimiento,
                         estado = estado,
                         recargo = cursor.getInt(cursor.getColumnIndexOrThrow(RECARGO)),
-                        numeroCuota = cursor.getString(cursor.getColumnIndexOrThrow(NUMERO_CUOTA))
+                        numeroCuota = cursor.getString(cursor.getColumnIndexOrThrow(NUMERO_CUOTA)),
+                        planId = cursor.getString(cursor.getColumnIndexOrThrow("plan_id"))
                     )
                 )
             }
@@ -349,6 +614,7 @@ class PagoFlexDbHelper(context: Context) :
             put(ESTADO, compromiso.estado)
             put(RECARGO, compromiso.recargo)
             put(NUMERO_CUOTA, compromiso.numeroCuota)
+            put("plan_id", compromiso.planId)
         }
     )
 
@@ -425,7 +691,7 @@ class PagoFlexDbHelper(context: Context) :
     fun listarReportes(): List<Reporte> {
         val lista = mutableListOf<Reporte>()
         readableDatabase.rawQuery(
-            "SELECT $FOLIO, $MOTIVO_REPORTE, $ESTADO_REPORTE FROM $TABLA_REPORTES ORDER BY $FECHA_REPORTE DESC",
+            "SELECT $FOLIO, $MOTIVO_REPORTE, $ESTADO_REPORTE, respuesta FROM $TABLA_REPORTES ORDER BY $FECHA_REPORTE DESC",
             null
         ).use { cursor ->
             while (cursor.moveToNext()) {
@@ -433,10 +699,23 @@ class PagoFlexDbHelper(context: Context) :
                     Reporte(
                         folio = cursor.getString(cursor.getColumnIndexOrThrow(FOLIO)),
                         motivo = cursor.getString(cursor.getColumnIndexOrThrow(MOTIVO_REPORTE)),
-                        estado = cursor.getString(cursor.getColumnIndexOrThrow(ESTADO_REPORTE))
+                        estado = cursor.getString(cursor.getColumnIndexOrThrow(ESTADO_REPORTE)),
+                        respuesta = cursor.getString(cursor.getColumnIndexOrThrow("respuesta"))
                     )
                 )
             }
+        }
+        return lista
+    }
+
+    fun listarReportesEjecutivo(id: Long): List<Reporte> {
+        val empresa = empresaEjecutivo(id) ?: return emptyList()
+        val lista = mutableListOf<Reporte>()
+        readableDatabase.rawQuery(
+            "SELECT r.folio, r.motivo, r.estado_reporte, r.respuesta FROM reportes r JOIN compromisos c ON c.folio = r.folio WHERE c.nombre_empresa = ? COLLATE NOCASE ORDER BY r.fecha_reporte DESC",
+            arrayOf(empresa)
+        ).use { cursor ->
+            while (cursor.moveToNext()) lista.add(Reporte(cursor.getString(0), cursor.getString(1), cursor.getString(2), cursor.getString(3)))
         }
         return lista
     }
@@ -451,8 +730,8 @@ class PagoFlexDbHelper(context: Context) :
         ) == 1
     }
 
-    fun resolverReporte(folio: String, estadoCompromiso: String): Boolean {
-        if (estadoCompromiso !in listOf("Pendiente", "Anulado")) return false
+    fun resolverReporte(folio: String, estadoCompromiso: String, respuesta: String): Boolean {
+        if (estadoCompromiso != "Pendiente" || respuesta.isBlank()) return false
         val db = writableDatabase
         db.beginTransaction()
         try {
@@ -466,7 +745,10 @@ class PagoFlexDbHelper(context: Context) :
 
             val reporteActualizado = db.update(
                 TABLA_REPORTES,
-                ContentValues().apply { put(ESTADO_REPORTE, "Resuelto") },
+                ContentValues().apply {
+                    put(ESTADO_REPORTE, "Resuelto")
+                    put("respuesta", respuesta.trim())
+                },
                 "$FOLIO = ? AND $ESTADO_REPORTE = 'En proceso'",
                 arrayOf(folio)
             )
@@ -617,17 +899,172 @@ class PagoFlexDbHelper(context: Context) :
         arrayOf(usuario.id.toString(), Validaciones.normalizarRut(usuario.rut), usuario.correo.trim().lowercase())
     ).use { it.moveToFirst() }
 
-    fun insertarServicio(servicio: Servicio): Long {
-        return writableDatabase.insert(
-            TABLA_SERVICIOS,
-            null,
-            ContentValues().apply {
-                put(ID_USUARIO, servicio.usuarioId)
-                put(NOMBRE_EMPRESA, servicio.nombreEmpresa)
-                put(RUT_PAGADOR, servicio.rutPagador)
-                put(ALIAS, servicio.alias)
+    fun esEmpresaGestionada(nombre: String): Boolean {
+        if (CatalogoServicios.esDuoc(nombre)) return true
+        val buscada = CatalogoServicios.normalizarNombre(nombre)
+        return readableDatabase.rawQuery("SELECT empresa FROM ejecutivo_empresa", null).use { cursor ->
+            var encontrada = false
+            while (cursor.moveToNext()) {
+                if (CatalogoServicios.normalizarNombre(cursor.getString(0)) == buscada) {
+                    encontrada = true
+                    break
+                }
             }
-        )
+            encontrada
+        }
+    }
+
+    fun insertarServicio(servicio: Servicio): Long {
+        if (servicio.nombreEmpresa.isBlank()) return -1L
+        val disponible = CatalogoServicios.buscar(servicio.nombreEmpresa)
+        val nombreEmpresa = if (CatalogoServicios.esDuoc(servicio.nombreEmpresa)) "Duoc Uc" else disponible?.empresa ?: return -1L
+        val gestionada = esEmpresaGestionada(nombreEmpresa)
+        if (!Validaciones.rutValido(servicio.rutPagador) || servicio.alias.isBlank()) return -1L
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val rutCuenta = db.rawQuery(
+                "SELECT $RUT FROM $TABLA_USUARIOS WHERE $ID_USUARIO = ? AND $ID_ROL = 1",
+                arrayOf(servicio.usuarioId.toString())
+            ).use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else return -1L }
+
+            val servicioRepetido = db.rawQuery(
+                "SELECT 1 FROM $TABLA_SERVICIOS WHERE $ID_USUARIO = ? AND $NOMBRE_EMPRESA = ? COLLATE NOCASE AND REPLACE(REPLACE(UPPER($RUT_PAGADOR), '.', ''), '-', '') = ? LIMIT 1",
+                arrayOf(servicio.usuarioId.toString(), nombreEmpresa, Validaciones.normalizarRut(servicio.rutPagador))
+            ).use { it.moveToFirst() }
+            if (servicioRepetido) return -1L
+
+            val valoresServicio = ContentValues().apply {
+                put(ID_USUARIO, servicio.usuarioId)
+                put(NOMBRE_EMPRESA, nombreEmpresa)
+                put(RUT_PAGADOR, Validaciones.formatearRut(servicio.rutPagador))
+                put(ALIAS, servicio.alias.trim())
+            }
+            val servicioId = db.insert(TABLA_SERVICIOS, null, valoresServicio)
+            if (servicioId == -1L) return -1L
+
+            val mismoRut = Validaciones.normalizarRut(rutCuenta) == Validaciones.normalizarRut(servicio.rutPagador)
+            val cobroExistente = mismoRut && db.rawQuery(
+                "SELECT 1 FROM $TABLA_COMPROMISOS WHERE $ID_USUARIO = ? AND $NOMBRE_EMPRESA = ? COLLATE NOCASE AND $ESTADO IN ('Pendiente', 'Vencido', 'En revisión') LIMIT 1",
+                arrayOf(servicio.usuarioId.toString(), nombreEmpresa)
+            ).use { it.moveToFirst() }
+
+            if (!cobroExistente && !gestionada) {
+                val montoPrueba = disponible?.monto ?: return -1L
+                val fecha = java.util.Calendar.getInstance().apply { add(java.util.Calendar.DAY_OF_YEAR, 30) }
+                val vencimiento = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(fecha.time)
+                val valoresCobro = ContentValues().apply {
+                    put(FOLIO, "SERV-" + java.util.UUID.randomUUID().toString().take(12).uppercase())
+                    put(ID_USUARIO, servicio.usuarioId)
+                    put(NOMBRE_EMPRESA, nombreEmpresa)
+                    put(CONCEPTO, servicio.alias.trim())
+                    put(MONTO, montoPrueba)
+                    put(VENCIMIENTO, vencimiento)
+                    put(ESTADO, "Pendiente")
+                }
+                if (db.insert(TABLA_COMPROMISOS, null, valoresCobro) == -1L) return -1L
+            }
+            db.setTransactionSuccessful()
+            return servicioId
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    fun crearCuotasServicio(usuarioId: Long, folio: String, cantidad: Int): Boolean {
+        if (cantidad !in 2..12) return false
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val compromiso = listarCompromisos(usuarioId).find { it.folio == folio } ?: return false
+            if (CatalogoServicios.buscar(compromiso.empresa) == null || esEmpresaGestionada(compromiso.empresa) ||
+                compromiso.estado !in listOf("Pendiente", "Vencido") ||
+                compromiso.numeroCuota.isNotBlank() || compromiso.planId.isNotBlank()) return false
+
+            val tieneHistorial = db.rawQuery(
+                "SELECT 1 FROM $TABLA_PAGOS WHERE $FOLIO = ? UNION ALL SELECT 1 FROM $TABLA_REPORTES WHERE $FOLIO = ? LIMIT 1",
+                arrayOf(folio, folio)
+            ).use { it.moveToFirst() }
+            if (tieneHistorial) return false
+            val total = compromiso.monto.toLong() + if (compromiso.estado == "Vencido") compromiso.recargo else 0
+            if (total < cantidad || total > Int.MAX_VALUE) return false
+            val hoy = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
+            val primerVencimiento = maxOf(compromiso.vencimiento, hoy)
+            val cuotas = PlanCuotas.calcular(total.toInt(), cantidad, primerVencimiento)
+            val planId = java.util.UUID.randomUUID().toString()
+
+            cuotas.forEachIndexed { indice, cuota ->
+                val valores = ContentValues().apply {
+                    put(MONTO, cuota.monto)
+                    put(VENCIMIENTO, cuota.vencimiento)
+                    put(ESTADO, "Pendiente")
+                    put(RECARGO, 0)
+                    put(NUMERO_CUOTA, "${cuota.numero}/$cantidad")
+                    put("plan_id", planId)
+                }
+                if (indice == 0) {
+                    if (db.update(TABLA_COMPROMISOS, valores, "$FOLIO = ? AND $ID_USUARIO = ? AND $ESTADO IN ('Pendiente', 'Vencido')", arrayOf(folio, usuarioId.toString())) != 1) return false
+                } else {
+                    valores.put(FOLIO, "SERV-" + java.util.UUID.randomUUID().toString().take(12).uppercase())
+                    valores.put(ID_USUARIO, usuarioId)
+                    valores.put(NOMBRE_EMPRESA, compromiso.empresa)
+                    valores.put(CONCEPTO, compromiso.concepto)
+                    if (db.insert(TABLA_COMPROMISOS, null, valores) == -1L) return false
+                }
+            }
+            db.setTransactionSuccessful()
+            return true
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    fun aplazarCuotaServicio(usuarioId: Long, folio: String): Boolean {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val seleccionada = listarCompromisos(usuarioId).find { it.folio == folio } ?: return false
+            if (CatalogoServicios.buscar(seleccionada.empresa) == null || esEmpresaGestionada(seleccionada.empresa) ||
+                seleccionada.estado != "Pendiente" || seleccionada.planId.isBlank()) return false
+            val numero = seleccionada.numeroCuota.substringBefore('/').toIntOrNull() ?: return false
+            val yaAplazada = db.rawQuery(
+                "SELECT 1 FROM aplazamientos_cuota WHERE folio = ? AND solicitada = 1",
+                arrayOf(folio)
+            ).use { it.moveToFirst() }
+            if (yaAplazada) return false
+
+            val posteriores = listarCompromisos(usuarioId)
+                .filter { it.planId == seleccionada.planId && (it.numeroCuota.substringBefore('/').toIntOrNull() ?: 0) >= numero && it.estado != "Anulado" }
+                .sortedBy { it.numeroCuota.substringBefore('/').toIntOrNull() }
+            if (posteriores.isEmpty() || posteriores.any { it.estado != "Pendiente" }) return false
+            val tieneHistorial = posteriores.any { compromiso ->
+                db.rawQuery(
+                    "SELECT 1 FROM $TABLA_PAGOS WHERE $FOLIO = ? UNION ALL SELECT 1 FROM $TABLA_REPORTES WHERE $FOLIO = ? LIMIT 1",
+                    arrayOf(compromiso.folio, compromiso.folio)
+                ).use { it.moveToFirst() }
+            }
+            if (tieneHistorial) return false
+            val nuevoMonto = AplazamientoCuota.montoConRecargo(seleccionada.monto)
+            if (nuevoMonto > Int.MAX_VALUE) return false
+            val operacion = java.util.UUID.randomUUID().toString()
+            for (compromiso in posteriores) {
+                val nuevaFecha = try {
+                    AplazamientoCuota.mesSiguiente(compromiso.vencimiento)
+                } catch (_: Exception) { return false }
+                val esSeleccionada = compromiso.folio == folio
+                val monto = if (esSeleccionada) nuevoMonto.toInt() else compromiso.monto
+                val valores = ContentValues().apply { put(VENCIMIENTO, nuevaFecha); put(MONTO, monto) }
+                if (db.update(TABLA_COMPROMISOS, valores, "$FOLIO = ? AND $ID_USUARIO = ? AND $ESTADO = 'Pendiente'", arrayOf(compromiso.folio, usuarioId.toString())) != 1) return false
+                db.execSQL(
+                    "INSERT INTO aplazamientos_cuota (operacion, folio, usuario_id, fecha_anterior, fecha_nueva, monto_anterior, monto_nuevo, solicitada, fecha_accion) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))",
+                    arrayOf<Any>(operacion, compromiso.folio, usuarioId, compromiso.vencimiento, nuevaFecha, compromiso.monto, monto, if (esSeleccionada) 1 else 0)
+                )
+            }
+            db.setTransactionSuccessful()
+            return true
+        } finally {
+            db.endTransaction()
+        }
     }
 
     fun eliminarServicio(idServicio: Long, idUsuario: Long): Boolean {
@@ -671,7 +1108,6 @@ class PagoFlexDbHelper(context: Context) :
         ).firstOrNull()
     }
 
-    // Comprueba la clave actual y cambia solo la contraseña de este usuario.
     fun cambiarContrasena(idUsuario: Long, actual: String, nueva: String): Boolean {
         if (nueva.isBlank() || nueva.length < 6) return false
         val valores = ContentValues().apply { put(CONTRASENA, nueva) }
