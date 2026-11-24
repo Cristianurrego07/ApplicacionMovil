@@ -1,9 +1,5 @@
 package com.example.app.data.remote
 
-// Fechas: los ms las envían como texto ISO ("2026-11-25" / "2026-11-25T10:30:00").
-// Enums con @JsonValue (estado, motivo...): llegan como la etiqueta ("En revisión", "Pendiente").
-
-// ---------- Error común de los ms ----------
 data class ErrorApi(
     val estado: Int? = null,
     val error: String? = null,
@@ -11,7 +7,6 @@ data class ErrorApi(
     val detalles: Map<String, String>? = null
 )
 
-// ---------- msUsuarios ----------
 data class UsuarioDto(
     val id: Long,
     val rut: String,
@@ -22,7 +17,7 @@ data class UsuarioDto(
     val telefono: String? = null,
     val direccion: String? = null,
     val ciudad: String? = null,
-    val avatar: String? = null // Base64
+    val avatar: String? = null
 )
 
 data class RolDto(val id: Long, val nombre: String)
@@ -50,7 +45,7 @@ data class ActualizarUsuarioRequest(
     val ciudad: String? = null
 )
 
-data class AvatarRequest(val avatar: String) // Base64
+data class AvatarRequest(val avatar: String)
 data class CambiarContrasenaRequest(val actual: String, val nueva: String)
 data class MensajeDto(val mensaje: String)
 
@@ -63,7 +58,6 @@ data class SolicitudCodigoDto(
 data class VerificarCodigoRequest(val correo: String, val codigo: String)
 data class RestablecerContrasenaRequest(val correo: String, val codigo: String, val nuevaContrasena: String)
 
-// ---------- msCobranza ----------
 data class CompromisoDto(
     val folio: String,
     val usuarioId: Long,
@@ -105,7 +99,6 @@ data class ComprobanteDto(
     val medioPago: String? = null
 )
 
-// ---------- msReportes ----------
 data class ReporteDto(
     val folio: String,
     val usuarioId: Long,
@@ -123,20 +116,19 @@ data class ReporteDto(
 data class ReporteRequest(
     val folio: String,
     val usuarioId: Long,
-    val motivo: String,      // etiqueta ("No reconozco este cobro") o nombre del enum
+    val motivo: String,
     val comentario: String? = null
 )
 
 data class ResolucionReporteRequest(
-    val estadoCompromiso: String, // "Pendiente" o "Anulado"
+    val estadoCompromiso: String,
     val respuesta: String? = null
 )
 
 data class ResumenReportesDto(val total: Long, val pendientes: Long, val enProceso: Long, val resueltos: Long)
 
-// ---------- msHabito ----------
 data class AvisoDto(
-    val tipo: String,            // VENCIDO / VENCE_HOY / ...
+    val tipo: String,
     val folio: String,
     val empresa: String,
     val concepto: String,
