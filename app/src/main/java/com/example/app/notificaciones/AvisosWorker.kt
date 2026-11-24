@@ -5,6 +5,9 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.example.app.data.PagoFlexDbHelper
 import com.example.app.data.SesionPreferencias
+import com.example.app.data.remote.PagoFlexRepository
+import com.example.app.data.remote.Resultado
+import kotlinx.coroutines.runBlocking
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -18,12 +21,22 @@ class AvisosWorker(context: Context, parametros: WorkerParameters) : Worker(cont
 
         val formato = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         formato.isLenient = false
+
         val db = PagoFlexDbHelper(applicationContext)
+        val repo = PagoFlexRepository()
 
         return try {
-            val usuario = db.buscarPorId(usuarioId)
-            val esEjecutivo = usuario?.rolNombre?.equals("EJECUTIVO", ignoreCase = true) == true
-            val compromisos = if (esEjecutivo) db.listarCompromisosEjecutivo(usuarioId) else db.listarCompromisos(usuarioId)
+            val usuarioResultado = runBlocking { repo.buscarPorId(usuarioId) }
+            val usuario = (usuarioResultado as? Resultado.Ok)?.dato ?: return Result.retry()
+
+            val esEjecutivo = usuario.rolNombre.equals("EJECUTIVO", ignoreCase = true)
+            val compromisos = if (esEjecutivo) {
+                db.listarCompromisosEjecutivo(usuarioId)
+            } else {
+                val r = runBlocking { repo.listarCompromisos(usuarioId) }
+                (r as? Resultado.Ok)?.dato ?: return Result.retry()
+            }
+
             val hoyTexto = formato.format(java.util.Date())
             val formatoUtc = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
                 isLenient = false
