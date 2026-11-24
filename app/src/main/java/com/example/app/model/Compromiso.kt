@@ -9,5 +9,6 @@ data class Compromiso(
     val vencimiento: String,
     val estado: String = "Pendiente",
     val recargo: Int = 0,
-    val numeroCuota: String = ""
+    val numeroCuota: String = "",
+    val planId: String = ""
 )

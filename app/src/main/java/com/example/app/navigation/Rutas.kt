@@ -1,22 +1,45 @@
 package com.example.app.navigation
 
 sealed class Ruta(val ruta: String) {
+
     data object Login : Ruta("login")
-    data object CrearCuenta : Ruta("crear-cuenta?rol={rol}") {
-        fun crear(rol: String = "CLIENTE") = "crear-cuenta?rol=$rol"
-    }
-    data object Perfil : Ruta("perfil")
-    data object AgregarServicio : Ruta("agregar-servicio")
-    data object MisServicios : Ruta("mis-servicios")
+
+    data object RecuperarContrasena : Ruta("recuperar-contrasena")
+
+    data object CrearCuenta : Ruta("crear-cuenta")
+
     data object Usuario : Ruta("usuario")
+
+    data object Perfil : Ruta("perfil")
+
+    data object AgregarServicio : Ruta("agregar-servicio")
+
+    data object MisServicios : Ruta("mis-servicios")
+
+    data object ServiciosAsociados : Ruta("servicios-asociados")
+
+    data object MisCompromisos : Ruta("mis-compromisos")
+
     data object Agente : Ruta("agente")
+
+    data object Ejecutivo : Ruta("ejecutivo")
+    data object RegistrarCompromiso : Ruta("registrar-compromiso-ejecutivo")
+
     data object Detalle : Ruta("detalle/{folio}") {
-        fun crear(folio: String) = "detalle/$folio"
+        fun crear(folio: String): String {
+            return "detalle/$folio"
+        }
     }
+
     data object Comprobante : Ruta("comprobante/{folio}") {
-        fun crear(folio: String) = "comprobante/$folio"
+        fun crear(folio: String): String {
+            return "comprobante/$folio"
+        }
     }
+
     data object HistorialPagos : Ruta("historial-pagos")
+
     data object ReportarProblema : Ruta("reportar-problema")
+
     data object HistorialReportes : Ruta("historial-reportes")
 }

@@ -5,7 +5,10 @@ import androidx.core.content.edit
 
 class SesionPreferencias(context: Context) {
 
-    private val prefs = context.getSharedPreferences("sesion", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences(
+        "sesion",
+        Context.MODE_PRIVATE
+    )
 
     companion object {
         private const val CLAVE_ID_USUARIO = "id_usuario"
@@ -13,12 +16,18 @@ class SesionPreferencias(context: Context) {
     }
 
     fun guardar(idUsuario: Long) {
-        prefs.edit { putLong(CLAVE_ID_USUARIO, idUsuario) }
+        prefs.edit {
+            putLong(CLAVE_ID_USUARIO, idUsuario)
+        }
     }
 
-    fun leer(): Long = prefs.getLong(CLAVE_ID_USUARIO, SIN_SESION)
+    fun leer(): Long {
+        return prefs.getLong(CLAVE_ID_USUARIO, SIN_SESION)
+    }
 
     fun borrar() {
-        prefs.edit { remove(CLAVE_ID_USUARIO) }
+        prefs.edit {
+            remove(CLAVE_ID_USUARIO)
+        }
     }
 }

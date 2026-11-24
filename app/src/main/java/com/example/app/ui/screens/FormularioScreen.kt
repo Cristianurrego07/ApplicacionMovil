@@ -1,7 +1,16 @@
 package com.example.app.ui.screens
 
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,7 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.MaterialTheme
@@ -25,12 +34,17 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.app.R
 import com.example.app.model.FormularioUiState
 import com.example.app.model.Usuario
 import com.example.app.ui.components.BotonPrincipal
@@ -65,8 +79,10 @@ fun FormularioScreen(
                     label = { Text("Inicio") },
                     selected = false,
                     onClick = {
-                        scope.launch { drawerState.close() }
-                        onVolverInicio()
+                        scope.launch {
+                            drawerState.close()
+                            onVolverInicio()
+                        }
                     }
                 )
             }
@@ -79,10 +95,11 @@ fun FormularioScreen(
             onRutCambia = viewModel::onRutCambia,
             onCorreoCambia = viewModel::onCorreoCambia,
             onContrasenaCambia = viewModel::onContrasenaCambia,
+            onConfirmarContrasenaCambia = viewModel::onConfirmarContrasenaCambia,
             onAlternarVisibilidad = viewModel::onAlternarVisibilidad,
             onTerminosCambia = viewModel::onTerminosCambia,
             onRegistrar = {
-                val usuario = viewModel.onRegistrar(rolInicial)
+                val usuario = viewModel.onRegistrar()
                 if (usuario != null) {
                     val usuarioGuardado = onGuardarUsuario(usuario, uiState.contrasena)
                     if (usuarioGuardado != null) {
@@ -95,7 +112,11 @@ fun FormularioScreen(
                 }
             },
             onLimpiar = viewModel::onLimpiar,
-            onAbrirMenu = { scope.launch { drawerState.open() } }
+            onAbrirMenu = {
+                scope.launch {
+                    drawerState.open()
+                }
+            }
         )
     }
 }
@@ -109,6 +130,7 @@ fun FormularioContent(
     onRutCambia: (String) -> Unit,
     onCorreoCambia: (String) -> Unit,
     onContrasenaCambia: (String) -> Unit,
+    onConfirmarContrasenaCambia: (String) -> Unit,
     onAlternarVisibilidad: () -> Unit,
     onTerminosCambia: (Boolean) -> Unit,
     onRegistrar: () -> Unit,
@@ -116,13 +138,29 @@ fun FormularioContent(
     onAbrirMenu: () -> Unit = {}
 ) {
     val esAgente = rol == "AGENTE"
+    val (focoRut, focoCorreo, focoClave, focoConfirmacion) = remember { FocusRequester.createRefs() }
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(if (esAgente) "Crear cuenta de agente" else "Crear cuenta") },
                 navigationIcon = {
-                    IconButton(onClick = onAbrirMenu) {
-                        Text("☰", style = MaterialTheme.typography.titleLarge)
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                role = Role.Button,
+                                onClick = onAbrirMenu
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_menu),
+                            contentDescription = "Abrir menú",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
             )
@@ -132,6 +170,7 @@ fun FormularioContent(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(espacio)
+                .animateContentSize()
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -143,26 +182,43 @@ fun FormularioContent(
                     valor = uiState.nombre,
                     etiqueta = "Nombre completo",
                     alCambiar = onNombreCambia,
-                    error = uiState.errorNombre
+                    error = uiState.errorNombre,
+                    keyboardActions = KeyboardActions(onNext = { focoRut.requestFocus() })
                 )
                 CampoTexto(
                     valor = uiState.rut,
                     etiqueta = "RUT",
                     alCambiar = onRutCambia,
-                    error = uiState.errorRut
+                    error = uiState.errorRut,
+                    modifier = Modifier.focusRequester(focoRut),
+                    keyboardActions = KeyboardActions(onNext = { focoCorreo.requestFocus() })
                 )
                 CampoTexto(
                     valor = uiState.correo,
                     etiqueta = "Correo electrónico",
                     alCambiar = onCorreoCambia,
-                    error = uiState.errorCorreo
+                    error = uiState.errorCorreo,
+                    modifier = Modifier.focusRequester(focoCorreo),
+                    keyboardActions = KeyboardActions(onNext = { focoClave.requestFocus() })
                 )
                 CampoContrasena(
                     valor = uiState.contrasena,
                     alCambiar = onContrasenaCambia,
                     visible = uiState.contrasenaVisible,
                     alAlternarVisible = onAlternarVisibilidad,
-                    error = uiState.errorContrasena
+                    error = uiState.errorContrasena,
+                    modifier = Modifier.focusRequester(focoClave),
+                    imeAction = ImeAction.Next,
+                    keyboardActions = KeyboardActions(onNext = { focoConfirmacion.requestFocus() })
+                )
+                CampoContrasena(
+                    valor = uiState.confirmarContrasena,
+                    alCambiar = onConfirmarContrasenaCambia,
+                    visible = uiState.contrasenaVisible,
+                    alAlternarVisible = onAlternarVisibilidad,
+                    error = uiState.errorConfirmarContrasena,
+                    etiqueta = "Repetir contraseña",
+                    modifier = Modifier.focusRequester(focoConfirmacion)
                 )
             }
 
@@ -217,7 +273,8 @@ private fun FormularioVacioPreview() {
         FormularioContent(
             uiState = FormularioUiState(),
             onNombreCambia = {}, onRutCambia = {}, onCorreoCambia = {},
-            onContrasenaCambia = {}, onAlternarVisibilidad = {}, onTerminosCambia = {},
+            onContrasenaCambia = {}, onConfirmarContrasenaCambia = {},
+            onAlternarVisibilidad = {}, onTerminosCambia = {},
             onRegistrar = {}, onLimpiar = {}, onAbrirMenu = {}
         )
     }
@@ -234,10 +291,12 @@ private fun FormularioConErroresPreview(){
                 errorRut = "Ingresa un rut válido",
                 errorCorreo = "Ingresa un correo válido",
                 errorContrasena = "Minímo 6 caracteres",
+                errorConfirmarContrasena = "Repite la contraseña",
                 errorTerminos = "Debes aceptar los términos y condiciones"
             ),
             onNombreCambia = {}, onRutCambia = {}, onCorreoCambia = {},
-            onContrasenaCambia = {}, onAlternarVisibilidad = {}, onTerminosCambia = {},
+            onContrasenaCambia = {}, onConfirmarContrasenaCambia = {},
+            onAlternarVisibilidad = {}, onTerminosCambia = {},
             onRegistrar = {}, onLimpiar = {}, onAbrirMenu = {}
         )
     }

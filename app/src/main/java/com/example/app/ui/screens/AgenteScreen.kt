@@ -1,19 +1,27 @@
 package com.example.app.ui.screens
 
 import android.content.res.Configuration
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
@@ -22,7 +30,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
@@ -35,11 +42,18 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.app.viewmodel.RespuestaReporteViewModel
+import com.example.app.model.Compromiso
 import com.example.app.model.Reporte
 import com.example.app.model.Usuario
 import com.example.app.ui.components.BotonPrincipal
@@ -51,71 +65,198 @@ import com.example.app.ui.theme.Primario
 import com.example.app.ui.theme.Secundario
 import kotlinx.coroutines.launch
 
-private val estadosReporte = listOf("Pendientes", "En proceso", "Resueltos")
+private val estadosReporte = listOf(
+    "Pendientes",
+    "En proceso",
+    "Resueltos"
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AgenteScreen(
     usuario: Usuario?,
     reportes: List<Reporte>,
+    compromisos: List<Compromiso> = emptyList(),
     onVerPerfil: () -> Unit,
     onVerHistorial: () -> Unit,
     onCerrarSesion: () -> Unit,
-    onCambiarEstado: (Reporte, String) -> Boolean
+    onCambiarEstado: (Reporte, String, String) -> Boolean
 ) {
-    var pestanaSeleccionada by remember { mutableIntStateOf(0) }
-    var errorAccion by remember { mutableStateOf<String?>(null) }
+    var pestanaSeleccionada by remember {
+        mutableIntStateOf(0)
+    }
+
+    var errorAccion by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    var reporteSeleccionado by remember { mutableStateOf<Reporte?>(null) }
+    val respuestaViewModel: RespuestaReporteViewModel = viewModel()
+    val respuesta by respuestaViewModel.uiState.collectAsStateWithLifecycle()
+
+    reporteSeleccionado?.let { reporte ->
+        val compromiso = compromisos.find { it.folio == reporte.folio }
+        val resuelto = reporte.estado == "Resuelto"
+
+        AlertDialog(
+            onDismissRequest = {
+                reporteSeleccionado = null
+                respuestaViewModel.limpiar()
+            },
+            title = { Text(if (resuelto) "Reporte resuelto" else "Detalle del reporte") },
+            text = {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("Folio: ${reporte.folio}")
+                    compromiso?.let {
+                        Text("Cliente: ${it.usuario.nombre}")
+                        Text("Empresa: ${it.empresa}")
+                        Text("Concepto: ${it.concepto}")
+                    }
+                    Text("Motivo del cliente: ${reporte.motivo}")
+                    if (resuelto) {
+                        Text("Respuesta: ${reporte.respuesta ?: "Sin respuesta registrada"}")
+                    } else {
+                        OutlinedTextField(
+                            value = respuesta.texto,
+                            onValueChange = respuestaViewModel::cambiarTexto,
+                            label = { Text("Respuesta para el cliente") },
+                            isError = respuesta.error != null,
+                            supportingText = { respuesta.error?.let { Text(it) } }
+                        )
+                        Text("Elige devolver el cobro para pago o anularlo.")
+                    }
+                }
+            },
+            confirmButton = {
+                if (resuelto) {
+                    TextButton(onClick = { reporteSeleccionado = null }) { Text("Cerrar") }
+                } else {
+                    Column {
+                        TextButton(onClick = {
+                            if (respuestaViewModel.validar()) {
+                                val mensaje = "Cobro devuelto para pago: ${respuesta.texto.trim()}"
+                                if (onCambiarEstado(reporte, "Pendiente", mensaje)) {
+                                    reporteSeleccionado = null
+                                    respuestaViewModel.limpiar()
+                                    errorAccion = null
+                                } else {
+                                    respuestaViewModel.mostrarError("No se pudo devolver el cobro. Inténtalo nuevamente.")
+                                }
+                            }
+                        }) { Text("Devolver para pago") }
+                        TextButton(onClick = {
+                            if (respuestaViewModel.validar()) {
+                                val mensaje = "Cobro anulado: ${respuesta.texto.trim()}"
+                                if (onCambiarEstado(reporte, "Anulado", mensaje)) {
+                                    reporteSeleccionado = null
+                                    respuestaViewModel.limpiar()
+                                    errorAccion = null
+                                } else {
+                                    respuestaViewModel.mostrarError("No se pudo anular el cobro. Inténtalo nuevamente.")
+                                }
+                            }
+                        }) { Text("Anular cobro") }
+                    }
+                }
+            },
+            dismissButton = {
+                if (!resuelto) {
+                    TextButton(onClick = {
+                        reporteSeleccionado = null
+                        respuestaViewModel.limpiar()
+                    }) { Text("Volver") }
+                }
+            }
+        )
+    }
+
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
     val reportesPestana = when (pestanaSeleccionada) {
-        0 -> reportes.filter { it.estado == "Pendiente" || it.estado == "Abierto" }
-        1 -> reportes.filter { it.estado == "En proceso" }
-        else -> reportes.filter { it.estado == "Resuelto" }
+        0 -> reportes.filter {
+            it.estado == "Pendiente" || it.estado == "Abierto"
+        }
+
+        1 -> reportes.filter {
+            it.estado == "En proceso"
+        }
+
+        else -> reportes.filter {
+            it.estado == "Resuelto"
+        }
     }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                Text(
-                    text = buildAnnotatedString {
-                        withStyle(SpanStyle(color = Primario)) { append("Pago") }
-                        withStyle(SpanStyle(color = Secundario)) { append("Flex") }
-                    },
-                    modifier = Modifier.padding(20.dp)
-                )
-                HorizontalDivider()
-                NavigationDrawerItem(
-                    label = { Text("Ver reportes") },
-                    selected = false,
-                    onClick = { scope.launch { drawerState.close() } }
-                )
-                NavigationDrawerItem(
-                    label = { Text("Mi perfil") },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        onVerPerfil()
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                ) {
+                    Row(modifier = Modifier.padding(start = 20.dp, top = 20.dp, end = 20.dp)) {
+                        Text("Pago", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
+                        Text("Flex", color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.titleLarge)
                     }
-                )
-                NavigationDrawerItem(
-                    label = { Text("Historial reportes") },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        onVerHistorial()
-                    }
-                )
-                HorizontalDivider()
-                NavigationDrawerItem(
-                    label = { Text("Cerrar sesión") },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        onCerrarSesion()
-                    }
-                )
+                    Text(
+                        text = "Agente · ${usuario?.nombre ?: "Usuario"}",
+                        modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 16.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    HorizontalDivider()
+                    Text(
+                        text = "Reportes",
+                        modifier = Modifier.padding(start = 20.dp, top = 14.dp, bottom = 4.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    NavigationDrawerItem(
+                        label = { Text("Ver reportes") },
+                        selected = false,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                        }
+                    )
+                    NavigationDrawerItem(
+                        label = { Text("Historial de reportes") },
+                        selected = false,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onVerHistorial()
+                        }
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
+                    Text(
+                        text = "Cuenta",
+                        modifier = Modifier.padding(start = 20.dp, top = 14.dp, bottom = 4.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    NavigationDrawerItem(
+                        label = { Text("Mi perfil") },
+                        selected = false,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onVerPerfil()
+                        }
+                    )
+                    NavigationDrawerItem(
+                        label = { Text("Cerrar sesión") },
+                        selected = false,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            onCerrarSesion()
+                        }
+                    )
+                }
             }
         }
     ) {
@@ -124,46 +265,82 @@ fun AgenteScreen(
             topBar = {
                 TopAppBar(
                     title = {
-                    Column {
-                        Text(
-                            text = buildAnnotatedString {
-                                withStyle(SpanStyle(color = Primario)) { append("Pago") }
-                                withStyle(SpanStyle(color = Secundario)) { append("Flex") }
-                            },
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        Text(
-                            text = "Panel Agente: ${usuario?.nombre ?: "Agente"}",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                        Column {
+                            Text(
+                                text = buildAnnotatedString {
+                                    withStyle(SpanStyle(color = Primario)) {
+                                        append("Pago")
+                                    }
+                                    withStyle(SpanStyle(color = Secundario)) {
+                                        append("Flex")
+                                    }
+                                },
+                                style = MaterialTheme.typography.titleLarge
+                            )
+
+                            Text(
+                                text = "Panel Agente: ${usuario?.nombre ?: "Agente"}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
+                    navigationIcon = {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .semantics {
+                                    contentDescription = "Abrir menú"
+                                }
+                                .clickable(
+                                    interactionSource = remember {
+                                        MutableInteractionSource()
+                                    },
+                                    indication = null,
+                                    role = Role.Button,
+                                    onClick = {
+                                        scope.launch {
+                                            drawerState.open()
+                                        }
+                                    }
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "☰",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = Secundario
+                            )
+                        }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface,
                         navigationIconContentColor = Secundario
-                    ),
-                    navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Text("☰", color = Secundario)
-                        }
-                    }
+                    )
                 )
             }
         ) { espacio ->
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(espacio)
             ) {
-                TabRow(selectedTabIndex = pestanaSeleccionada) {
+                TabRow(
+                    selectedTabIndex = pestanaSeleccionada
+                ) {
                     estadosReporte.forEachIndexed { indice, estado ->
                         Tab(
                             selected = pestanaSeleccionada == indice,
-                            onClick = { pestanaSeleccionada = indice },
-                            text = { Text(estado) },
+                            onClick = {
+                                pestanaSeleccionada = indice
+                            },
+                            text = {
+                                Text(text = estado)
+                            },
                             selectedContentColor = Secundario,
-                            unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            unselectedContentColor =
+                                MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -176,65 +353,87 @@ fun AgenteScreen(
                     if (reportesPestana.isEmpty()) {
                         item {
                             Text(
-                                when (pestanaSeleccionada) {
+                                text = when (pestanaSeleccionada) {
                                     0 -> "No hay reportes pendientes."
                                     1 -> "No hay reportes en proceso."
                                     else -> "Todavía no hay reportes resueltos."
                                 },
                                 modifier = Modifier.padding(vertical = 8.dp),
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     } else {
-                        items(reportesPestana, key = { it.folio }) { reporte ->
-                            TarjetaSeccion(titulo = "Compromiso: ${reporte.folio}") {
-                                Text("Motivo: ${reporte.motivo}")
-                                EtiquetaEstado(
-                                    if (reporte.estado == "Abierto") "Pendiente" else reporte.estado
+                        items(
+                            items = reportesPestana,
+                            key = { it.folio }
+                        ) { reporte ->
+
+                            TarjetaSeccion(
+                                titulo = "Compromiso: ${reporte.folio}",
+                                modifier = if (reporte.estado == "En proceso" || reporte.estado == "Resuelto") {
+                                    Modifier.clickable {
+                                        respuestaViewModel.limpiar()
+                                        reporteSeleccionado = reporte
+                                    }
+                                } else {
+                                    Modifier
+                                }
+                            ) {
+                                Text(
+                                    text = "Motivo: ${reporte.motivo}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
+
+                                EtiquetaEstado(
+                                    if (reporte.estado == "Abierto") {
+                                        "Pendiente"
+                                    } else {
+                                        reporte.estado
+                                    }
+                                )
+
                                 when (reporte.estado) {
-                                    "Pendiente", "Abierto" -> BotonPrincipal(
-                                        texto = "Tomar reporte",
-                                        onClick = {
-                                            errorAccion = if (onCambiarEstado(reporte, "En proceso")) {
-                                                null
-                                            } else {
-                                                "No se pudo actualizar el reporte. Inténtalo nuevamente."
-                                            }
-                                        },
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                    "En proceso" -> Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
+                                    "Pendiente",
+                                    "Abierto" -> {
                                         BotonPrincipal(
-                                            texto = "Reactivar",
+                                            texto = "Aceptar reporte",
                                             onClick = {
-                                                errorAccion = if (onCambiarEstado(reporte, "Pendiente")) {
+                                                errorAccion = if (
+                                                    onCambiarEstado(
+                                                        reporte,
+                                                        "En proceso",
+                                                        ""
+                                                    )
+                                                ) {
                                                     null
                                                 } else {
-                                                    "No se pudo reactivar el compromiso."
+                                                    "No se pudo actualizar el reporte. Inténtalo nuevamente."
                                                 }
                                             },
-                                            modifier = Modifier.weight(1f)
+                                            modifier = Modifier.fillMaxWidth()
                                         )
+                                    }
+
+                                    "En proceso", "Resuelto" -> {
                                         BotonSecundario(
-                                            texto = "Anular",
+                                            texto = "Ver detalle",
                                             onClick = {
-                                                errorAccion = if (onCambiarEstado(reporte, "Anulado")) {
-                                                    null
-                                                } else {
-                                                    "No se pudo anular el compromiso."
-                                                }
+                                                respuestaViewModel.limpiar()
+                                                reporteSeleccionado = reporte
                                             },
-                                            modifier = Modifier.weight(1f)
+                                            modifier = Modifier.fillMaxWidth()
                                         )
                                     }
                                 }
-                                errorAccion?.let {
-                                    Text(it, color = MaterialTheme.colorScheme.error)
+
+                                errorAccion?.let { mensaje ->
+                                    Text(
+                                        text = mensaje,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
                                 }
                             }
                         }
@@ -245,8 +444,18 @@ fun AgenteScreen(
     }
 }
 
-@Preview(name = "Agente claro", showBackground = true, showSystemUi = true, uiMode = Configuration.UI_MODE_NIGHT_NO)
-@Preview(name = "Agente oscuro", showBackground = true, showSystemUi = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(
+    name = "Agente claro",
+    showBackground = true,
+    showSystemUi = true,
+    uiMode = Configuration.UI_MODE_NIGHT_NO
+)
+@Preview(
+    name = "Agente oscuro",
+    showBackground = true,
+    showSystemUi = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES
+)
 @Composable
 private fun AgentePreview() {
     AppThemePreview {
@@ -260,14 +469,26 @@ private fun AgentePreview() {
                 rolNombre = "AGENTE"
             ),
             reportes = listOf(
-                Reporte("PF-001", "El monto no corresponde", "Pendiente"),
-                Reporte("PF-002", "Ya pagué por otro medio", "En proceso"),
-                Reporte("PF-003", "No reconozco este cobro", "Resuelto")
+                Reporte(
+                    "PF-001",
+                    "El monto no corresponde",
+                    "Pendiente"
+                ),
+                Reporte(
+                    "PF-002",
+                    "Ya pagué por otro medio",
+                    "En proceso"
+                ),
+                Reporte(
+                    "PF-003",
+                    "No reconozco este cobro",
+                    "Resuelto"
+                )
             ),
             onVerPerfil = {},
             onVerHistorial = {},
             onCerrarSesion = {},
-            onCambiarEstado = { _, _ -> true }
+            onCambiarEstado = { _, _, _ -> true }
         )
     }
 }
