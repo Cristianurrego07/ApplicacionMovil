@@ -118,36 +118,6 @@ class PagoFlexDbHelper(context: Context) :
             "CREATE TRIGGER IF NOT EXISTS pagos_sin_eliminacion " +
                     "BEFORE DELETE ON $TABLA_PAGOS BEGIN SELECT RAISE(ABORT, 'El comprobante es inmutable'); END"
 
-        private const val SQL_PRECARGAR_ROLES =
-            "INSERT INTO $TABLA_ROLES ($ID_ROL, $NOMBRE_ROL) VALUES " +
-                    "(1, 'CLIENTE'), (2, 'AGENTE'), (3, 'EJECUTIVO')"
-
-        private const val SQL_PRECARGAR_USUARIOS =
-            "INSERT INTO $TABLA_USUARIOS ($RUT, $NOMBRE, $CORREO, $CONTRASENA, $ID_ROL) VALUES " +
-                    "('20.435.214-5', 'Sofia Perez', 'sofia@gmail.com', 'cli123', 1), " +
-                    "('10.625.244-K', 'Matias Sanchez', 'matias@pagoflex.com', 'age123', 2), " +
-                    "('12.345.678-9', 'Carla Ejecutivo', 'carla@duocuc.cl', 'eje123', 3)"
-
-        private const val SQL_PRECARGAR_COMPROMISOS_CLIENTE =
-            "INSERT OR IGNORE INTO $TABLA_COMPROMISOS " +
-                    "($FOLIO, $ID_USUARIO, $NOMBRE_EMPRESA, $CONCEPTO, $MONTO, $VENCIMIENTO, $ESTADO, $RECARGO) VALUES " +
-                    "('PF-UNI-001', 1, 'Duoc Uc', 'Mensualidad', 356000, '2026-11-19', 'Pendiente', 7000), " +
-                    "('PF-LUZ-001', 1, 'Enel', 'Luz', 28000, '2026-11-25', 'Pendiente', 1100), " +
-                    "('PF-COND-001', 1, 'Condominio', 'Gasto común', 45000, '2026-12-10', 'Pendiente', 3000), " +
-                    "('PF-AGUA-001', 1, 'Aguas Andinas', 'Agua', 35000, '2026-12-20', 'Pendiente', 2000)"
-
-        private const val SQL_MIGRAR_COMPROMISOS_CLIENTE =
-            "INSERT OR IGNORE INTO $TABLA_COMPROMISOS " +
-                    "($FOLIO, $ID_USUARIO, $NOMBRE_EMPRESA, $CONCEPTO, $MONTO, $VENCIMIENTO, $ESTADO, $RECARGO) " +
-                    "SELECT 'PF-UNI-001', $ID_USUARIO, 'Duoc Uc', 'Mensualidad', 356000, '2026-11-19', 'Pendiente', 7000 " +
-                    "FROM $TABLA_USUARIOS WHERE $RUT = '20.435.214-5' " +
-                    "UNION ALL SELECT 'PF-LUZ-001', $ID_USUARIO, 'Enel', 'Luz', 28000, '2026-11-25', 'Pendiente', 1100 " +
-                    "FROM $TABLA_USUARIOS WHERE $RUT = '20.435.214-5' " +
-                    "UNION ALL SELECT 'PF-COND-001', $ID_USUARIO, 'Condominio', 'Gasto común', 45000, '2026-12-10', 'Pendiente', 3000 " +
-                    "FROM $TABLA_USUARIOS WHERE $RUT = '20.435.214-5' " +
-                    "UNION ALL SELECT 'PF-AGUA-001', $ID_USUARIO, 'Aguas Andinas', 'Agua', 35000, '2026-12-20', 'Pendiente', 2000 " +
-                    "FROM $TABLA_USUARIOS WHERE $RUT = '20.435.214-5'"
-
         private const val SQL_SELECT_USUARIOS =
             "SELECT u.*, r.$NOMBRE_ROL AS $NOMBRE_ROL " +
                     "FROM $TABLA_USUARIOS u " +
@@ -169,16 +139,6 @@ class PagoFlexDbHelper(context: Context) :
         crearTablaAplazamientos(db)
         db.execSQL(SQL_PROTEGER_PAGOS_UPDATE)
         db.execSQL(SQL_PROTEGER_PAGOS_DELETE)
-        db.execSQL(SQL_PRECARGAR_ROLES)
-        db.execSQL(SQL_PRECARGAR_USUARIOS)
-        crearDatosEjecutivo(db)
-        db.execSQL(SQL_PRECARGAR_COMPROMISOS_CLIENTE)
-        precargarMensualidadesSofia(db)
-        precargarPendientesSofia(db)
-        db.execSQL(
-            "INSERT INTO $TABLA_SERVICIOS ($ID_USUARIO, $NOMBRE_EMPRESA, $RUT_PAGADOR, $ALIAS) " +
-                    "VALUES (1, 'Enel', '20.435.214-5', 'Cuenta de electricidad')"
-        )
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -206,20 +166,9 @@ class PagoFlexDbHelper(context: Context) :
             db.execSQL("DROP TABLE $TABLA_SERVICIOS")
             db.execSQL("ALTER TABLE servicios_nueva RENAME TO $TABLA_SERVICIOS")
         }
-        if (oldVersion < 7) {
-            db.execSQL(
-                "INSERT INTO $TABLA_SERVICIOS ($ID_USUARIO, $NOMBRE_EMPRESA, $RUT_PAGADOR, $ALIAS) " +
-                        "SELECT 1, 'Luz', '20.435.214-5', 'Enel' " +
-                        "WHERE EXISTS (SELECT 1 FROM $TABLA_USUARIOS WHERE $ID_USUARIO = 1) " +
-                        "AND NOT EXISTS (SELECT 1 FROM $TABLA_SERVICIOS WHERE $ID_USUARIO = 1 AND $NOMBRE_EMPRESA = 'Enel')"
-            )
-        }
         if (oldVersion < 9) {
             db.execSQL("UPDATE $TABLA_COMPROMISOS SET $NOMBRE_EMPRESA = 'Duoc Uc' WHERE $FOLIO = 'PF-UNI-001' OR $NOMBRE_EMPRESA = 'Universidad'")
             db.execSQL("UPDATE $TABLA_SERVICIOS SET $NOMBRE_EMPRESA = 'Enel' WHERE $NOMBRE_EMPRESA = 'Luz'")
-        }
-        if (oldVersion < 10) {
-            db.execSQL(SQL_MIGRAR_COMPROMISOS_CLIENTE)
         }
         if (oldVersion < 11) {
             db.execSQL(SQL_CREAR_REPORTES)
@@ -247,15 +196,6 @@ class PagoFlexDbHelper(context: Context) :
                 "INSERT OR IGNORE INTO $TABLA_USUARIOS ($RUT, $NOMBRE, $CORREO, $CONTRASENA, $ID_ROL) " +
                 "VALUES ('12.345.678-9', 'Carla Ejecutivo', 'carla@duocuc.cl', 'eje123', 3)"
             )
-        }
-        if (oldVersion < 19) {
-            crearDatosEjecutivo(db)
-        }
-        if (oldVersion < 20) {
-            precargarMensualidadesSofia(db)
-        }
-        if (oldVersion < 22) {
-            precargarPendientesSofia(db)
         }
         if (oldVersion < 26) {
             crearTablaAplazamientos(db)
@@ -328,84 +268,6 @@ class PagoFlexDbHelper(context: Context) :
         }
     }
 
-    private fun precargarMensualidadesSofia(db: SQLiteDatabase) {
-        val usuarioId = db.rawQuery(
-            "SELECT $ID_USUARIO FROM $TABLA_USUARIOS WHERE LOWER($CORREO) = ? AND $ID_ROL = 1",
-            arrayOf("sofia@gmail.com")
-        ).use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else return }
-
-        for (mes in 7..10) {
-            val numeroMes = mes.toString().padStart(2, '0')
-            val folio = "PF-DEMO-DUOC-2026-$numeroMes"
-            val fechaVencimiento = "2026-$numeroMes-19"
-            val fechaPago = "2026-$numeroMes-15 12:00:00"
-
-            val compromiso = ContentValues().apply {
-                put(FOLIO, folio)
-                put(ID_USUARIO, usuarioId)
-                put(NOMBRE_EMPRESA, "Duoc Uc")
-                put(CONCEPTO, "Mensualidad")
-                put(MONTO, 356000)
-                put(VENCIMIENTO, fechaVencimiento)
-                put(ESTADO, "Pagado")
-                put(NUMERO_CUOTA, "$mes/12")
-            }
-            val creado = db.insertWithOnConflict(TABLA_COMPROMISOS, null, compromiso, SQLiteDatabase.CONFLICT_IGNORE)
-            if (creado != -1L) {
-                val comprobante = ContentValues().apply {
-                    put(NUMERO_COMPROBANTE, "CPR-DEMO-2026-$numeroMes")
-                    put(FOLIO, folio)
-                    put(NOMBRE_EMPRESA, "Duoc Uc")
-                    put(CONCEPTO, "Mensualidad")
-                    put(MONTO_PAGADO, 356000)
-                    put(FECHA_HORA, fechaPago)
-                    put(CANAL, "App")
-                    put(MEDIO_PAGO, "Tarjeta de débito")
-                }
-                check(db.insertOrThrow(TABLA_PAGOS, null, comprobante) != -1L)
-            }
-        }
-
-        val diciembre = ContentValues().apply {
-            put(FOLIO, "PF-DEMO-DUOC-2026-12")
-            put(ID_USUARIO, usuarioId)
-            put(NOMBRE_EMPRESA, "Duoc Uc")
-            put(CONCEPTO, "Mensualidad")
-            put(MONTO, 356000)
-            put(VENCIMIENTO, "2026-12-19")
-            put(ESTADO, "Pendiente")
-            put(RECARGO, 7000)
-            put(NUMERO_CUOTA, "12/12")
-        }
-        db.insertWithOnConflict(TABLA_COMPROMISOS, null, diciembre, SQLiteDatabase.CONFLICT_IGNORE)
-    }
-
-    private fun precargarPendientesSofia(db: SQLiteDatabase) {
-        val usuarioId = db.rawQuery(
-            "SELECT $ID_USUARIO FROM $TABLA_USUARIOS WHERE LOWER($CORREO) = ? AND $ID_ROL = 1",
-            arrayOf("sofia@gmail.com")
-        ).use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else return }
-
-        val ejemplos = listOf(
-            "PF-DEMO-PEND-2" to Triple("Biblioteca", 15000, "2026-11-30"),
-            "PF-DEMO-PEND-3" to Triple("Matrícula", 182000, "2026-12-10"),
-            "PF-DEMO-PEND-4" to Triple("Certificado", 10000, "2026-12-20")
-        )
-        ejemplos.forEach { (folio, datos) ->
-            val (concepto, monto, fecha) = datos
-            val valores = ContentValues().apply {
-                put(FOLIO, folio)
-                put(ID_USUARIO, usuarioId)
-                put(NOMBRE_EMPRESA, "Duoc Uc")
-                put(CONCEPTO, concepto)
-                put(MONTO, monto)
-                put(VENCIMIENTO, fecha)
-                put(ESTADO, "Pendiente")
-            }
-            db.insertWithOnConflict(TABLA_COMPROMISOS, null, valores, SQLiteDatabase.CONFLICT_IGNORE)
-        }
-    }
-
     private fun crearTablaAplazamientos(db: SQLiteDatabase) {
         db.execSQL(
             "CREATE TABLE IF NOT EXISTS aplazamientos_cuota (" +
@@ -416,12 +278,6 @@ class PagoFlexDbHelper(context: Context) :
                 "solicitada INTEGER NOT NULL, fecha_accion TEXT NOT NULL)"
         )
         db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS aplazamiento_unico ON aplazamientos_cuota(folio) WHERE solicitada = 1")
-    }
-
-    private fun crearDatosEjecutivo(db: SQLiteDatabase) {
-        db.execSQL("CREATE TABLE IF NOT EXISTS ejecutivo_empresa (id_usuario INTEGER PRIMARY KEY REFERENCES usuarios(id_usuario), empresa TEXT NOT NULL)")
-        db.execSQL("CREATE TABLE IF NOT EXISTS acciones_ejecutivo (id INTEGER PRIMARY KEY AUTOINCREMENT, folio TEXT NOT NULL, ejecutivo_id INTEGER NOT NULL, accion TEXT NOT NULL, motivo TEXT, fecha TEXT NOT NULL)")
-        db.execSQL("INSERT OR IGNORE INTO ejecutivo_empresa (id_usuario, empresa) SELECT id_usuario, 'Duoc Uc' FROM usuarios WHERE LOWER(correo) IN ('carla@empresa.com', 'carla@duocuc.cl') AND id_rol = 3")
     }
 
     fun empresaEjecutivo(id: Long): String? = readableDatabase.rawQuery(
