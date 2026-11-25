@@ -22,7 +22,7 @@ class CompromisoEjecutivoViewModel : ViewModel() {
     var errorTotalCuotas by mutableStateOf<String?>(null)
     var errorGeneral by mutableStateOf<String?>(null)
 
-    fun guardar(onGuardar: (String, String, Int, String, String) -> Boolean): Boolean {
+    suspend fun guardar(onGuardar: suspend (String, String, Int, String, String) -> Boolean): Boolean {
         errorRut = if (!Validaciones.rutValido(rut)) {
             "Ingresa un RUT válido con puntos y guion"
         } else {

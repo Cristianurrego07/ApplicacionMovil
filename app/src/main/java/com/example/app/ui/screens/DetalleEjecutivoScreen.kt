@@ -15,6 +15,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -34,10 +36,12 @@ fun DetalleEjecutivoScreen(
     compromiso: Compromiso,
     reporte: Reporte?,
     onVolver: () -> Unit,
-    onAnular: (String) -> Boolean,
-    onModificarCuota: (Int, String) -> Boolean
+    onAnular: suspend (String) -> Boolean,
+    onModificarCuota: suspend (Int, String) -> Boolean
 ) {
     val editarCuota: EditarCuotaViewModel = viewModel(key = "cuota_${compromiso.folio}")
+    val scope = rememberCoroutineScope()
+    var guardando by remember { mutableStateOf(false) }
     var mostrarEditar by remember { mutableStateOf(false) }
     var mostrar by remember { mutableStateOf(false) }
     var motivo by remember { mutableStateOf("Repactación") }
@@ -111,9 +115,19 @@ fun DetalleEjecutivoScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    if (editarCuota.guardar(onModificarCuota)) { mostrarEditar = false; onVolver() }
-                }) { Text("Guardar") }
+                TextButton(enabled = !guardando, onClick = {
+                    guardando = true
+                    scope.launch {
+                        try {
+                            if (editarCuota.guardar(onModificarCuota)) {
+                                mostrarEditar = false
+                                onVolver()
+                            }
+                        } finally {
+                            guardando = false
+                        }
+                    }
+                }) { Text(if (guardando) "Guardando…" else "Guardar") }
             },
             dismissButton = { TextButton(onClick = { mostrarEditar = false }) { Text("Cancelar") } }
         )
@@ -144,7 +158,7 @@ fun DetalleEjecutivoScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
+                TextButton(enabled = !guardando, onClick = {
                     val motivoFinal = if (motivo == "Otro") {
                         "Otro: ${comentario.trim()}"
                     } else {
@@ -152,11 +166,20 @@ fun DetalleEjecutivoScreen(
                     }
                     if (motivo == "Otro" && comentario.isBlank()) {
                         error = "Describe el motivo"
-                    } else if (onAnular(motivoFinal)) {
-                        mostrar = false
-                        onVolver()
                     } else {
-                        error = "No se pudo anular el compromiso"
+                        guardando = true
+                        scope.launch {
+                            try {
+                                if (onAnular(motivoFinal)) {
+                                    mostrar = false
+                                    onVolver()
+                                } else {
+                                    error = "No se pudo anular el compromiso"
+                                }
+                            } finally {
+                                guardando = false
+                            }
+                        }
                     }
                 }) { Text("Confirmar anulación") }
             },

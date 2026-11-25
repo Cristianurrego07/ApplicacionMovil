@@ -28,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -40,6 +41,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.app.R
 import com.example.app.model.AplazamientoCuota
+import com.example.app.data.remote.Resultado
+import kotlinx.coroutines.launch
 import com.example.app.model.Compromiso
 import com.example.app.model.Usuario
 import com.example.app.ui.components.DialogoReporte
@@ -62,9 +65,11 @@ fun DetalleScreen(
     saldoPlan: Int? = null,
     montoPagado: Int? = null,
     onVerComprobante: (() -> Unit)? = null,
-    onCrearCuotas: ((Int) -> Boolean)? = null,
-    onAplazarCuota: (() -> Boolean)? = null
+    onCrearCuotas: (suspend (Int) -> Resultado<List<Compromiso>>)? = null,
+    onAplazarCuota: (suspend () -> Resultado<List<Compromiso>>)? = null
 ) {
+    val scope = rememberCoroutineScope()
+    var guardandoCuotas by remember { mutableStateOf(false) }
     var mostrarConfirmacion by remember { mutableStateOf(false) }
     var mostrarReporte by remember { mutableStateOf(false) }
     var mostrarCuotas by remember { mutableStateOf(false) }
@@ -312,13 +317,19 @@ fun DetalleScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    if (onCrearCuotas(cantidadCuotas)) {
-                        mostrarCuotas = false
-                    } else {
-                        errorCuotas = "No se pudo crear el plan. Revisa que el compromiso no tenga pagos ni reportes."
+                TextButton(enabled = !guardandoCuotas, onClick = {
+                    guardandoCuotas = true
+                    scope.launch {
+                        try {
+                            when (val resultado = onCrearCuotas(cantidadCuotas)) {
+                                is Resultado.Ok -> mostrarCuotas = false
+                                is Resultado.Error -> errorCuotas = resultado.mensaje
+                            }
+                        } finally {
+                            guardandoCuotas = false
+                        }
                     }
-                }) { Text("Confirmar") }
+                }) { Text(if (guardandoCuotas) "Guardando…" else "Confirmar") }
             },
             dismissButton = { TextButton(onClick = { mostrarCuotas = false }) { Text("Cancelar") } }
         )
@@ -348,13 +359,19 @@ fun DetalleScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    if (onAplazarCuota()) {
-                        mostrarAplazamiento = false
-                    } else {
-                        errorCuotas = "No se pudo aplazar. Revisa que esta cuota no se haya aplazado antes y que las posteriores estén pendientes y sin reportes."
+                TextButton(enabled = !guardandoCuotas, onClick = {
+                    guardandoCuotas = true
+                    scope.launch {
+                        try {
+                            when (val resultado = onAplazarCuota()) {
+                                is Resultado.Ok -> mostrarAplazamiento = false
+                                is Resultado.Error -> errorCuotas = resultado.mensaje
+                            }
+                        } finally {
+                            guardandoCuotas = false
+                        }
                     }
-                }) { Text("Confirmar") }
+                }) { Text(if (guardandoCuotas) "Guardando…" else "Confirmar") }
             },
             dismissButton = { TextButton(onClick = { mostrarAplazamiento = false }) { Text("Cancelar") } }
         )

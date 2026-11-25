@@ -20,6 +20,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -27,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.app.R
+import com.example.app.data.remote.Resultado
 import com.example.app.model.Servicio
 import com.example.app.model.ServicioUiState
 import com.example.app.ui.components.BotonPrincipal
@@ -35,16 +40,19 @@ import com.example.app.ui.components.TarjetaSeccion
 import com.example.app.ui.theme.AppThemePreview
 import com.example.app.ui.theme.Secundario
 import com.example.app.viewmodel.ServicioViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun AgregarServicioScreen(
     usuarioId: Long,
     onVolver: () -> Unit,
     onServicioGuardado: () -> Unit,
-    onGuardarServicio: (Servicio) -> Boolean,
+    onGuardarServicio: suspend (Servicio) -> Resultado<Servicio>,
     viewModel: ServicioViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    var guardando by remember { mutableStateOf(false) }
 
     AgregarServicioContent(
         uiState = uiState,
@@ -52,13 +60,21 @@ fun AgregarServicioScreen(
         onNombreEmpresaCambia = viewModel::onNombreEmpresaCambia,
         onRutPagadorCambia = viewModel::onRutPagadorCambia,
         onAliasCambia = viewModel::onAliasCambia,
+        guardando = guardando,
         onAgregar = {
-            val servicio = viewModel.onAgregar(usuarioId)
-            if (servicio != null) {
-                if (onGuardarServicio(servicio)) {
-                    onServicioGuardado()
-                } else {
-                    viewModel.onGuardadoFallido()
+            if (!guardando) {
+                viewModel.onAgregar(usuarioId)?.let { servicio ->
+                    guardando = true
+                    scope.launch {
+                        try {
+                            when (val resultado = onGuardarServicio(servicio)) {
+                                is Resultado.Ok -> onServicioGuardado()
+                                is Resultado.Error -> viewModel.onGuardadoFallido(resultado.mensaje)
+                            }
+                        } finally {
+                            guardando = false
+                        }
+                    }
                 }
             }
         }
@@ -73,7 +89,8 @@ fun AgregarServicioContent(
     onNombreEmpresaCambia: (String) -> Unit,
     onRutPagadorCambia: (String) -> Unit,
     onAliasCambia: (String) -> Unit,
-    onAgregar: () -> Unit
+    onAgregar: () -> Unit,
+    guardando: Boolean = false
 ) {
     Scaffold(
         topBar = {
@@ -142,8 +159,9 @@ fun AgregarServicioContent(
 
             Spacer(Modifier.height(4.dp))
             BotonPrincipal(
-                texto = "Agregar servicio",
+                texto = if (guardando) "Guardando…" else "Agregar servicio",
                 onClick = onAgregar,
+                enabled = !guardando,
                 modifier = Modifier.fillMaxWidth()
             )
         }

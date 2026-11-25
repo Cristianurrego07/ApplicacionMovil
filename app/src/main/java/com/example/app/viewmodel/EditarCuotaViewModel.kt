@@ -28,7 +28,7 @@ class EditarCuotaViewModel : ViewModel() {
         errorGeneral = null
     }
 
-    fun guardar(onGuardar: (Int, String) -> Boolean): Boolean {
+    suspend fun guardar(onGuardar: suspend (Int, String) -> Boolean): Boolean {
         val numero = monto
             .takeIf { it.isNotEmpty() && it.all { digito -> digito in '0'..'9' } }
             ?.toIntOrNull()

@@ -49,16 +49,20 @@ import com.example.app.model.Usuario
 import com.example.app.ui.components.CampoContrasena
 import com.example.app.ui.theme.AppThemePreview
 import com.example.app.viewmodel.LoginViewModel
+import androidx.compose.runtime.rememberCoroutineScope
+import com.example.app.data.remote.Resultado
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
-    onIniciarSesion: (String, String) -> Usuario?,
-    onLoginExitoso: (Usuario) -> Unit,
+    onIniciarSesion: suspend (String, String) -> Resultado<Usuario>,
+    onLoginExitoso: suspend (Usuario) -> Unit,
     onCrearCuenta: () -> Unit,
     onRecuperarContrasena: () -> Unit,
     viewModel: LoginViewModel = viewModel()
 ) {
     val estado by viewModel.uiState.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
     LoginContent(
         estado = estado,
@@ -67,7 +71,7 @@ fun LoginScreen(
         onRecuperarContrasena = onRecuperarContrasena,
         onVisibilidad = viewModel::alternarVisibilidad,
         onIngresar = {
-            viewModel.iniciarSesion(onIniciarSesion)?.let(onLoginExitoso)
+            scope.launch { viewModel.iniciarSesion(onIniciarSesion, onLoginExitoso) }
         },
         onCrearCuenta = onCrearCuenta
     )
@@ -204,6 +208,7 @@ fun LoginContent(
 
                 Button(
                     onClick = onIngresar,
+                    enabled = !estado.cargando,
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 54.dp),
@@ -213,7 +218,7 @@ fun LoginContent(
                     )
                 ) {
                     Text(
-                        text = "Iniciar sesión",
+                        text = if (estado.cargando) "Iniciando sesión…" else "Iniciar sesión",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimary

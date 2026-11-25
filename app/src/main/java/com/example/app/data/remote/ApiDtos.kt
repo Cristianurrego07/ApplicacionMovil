@@ -1,6 +1,7 @@
 package com.example.app.data.remote
 
 data class ErrorApi(
+    val detail: String? = null,
     val estado: Int? = null,
     val error: String? = null,
     val mensaje: String? = null,
@@ -70,8 +71,31 @@ data class CompromisoDto(
     val estado: String,
     val recargo: Int? = 0,
     val numeroCuota: String? = "",
-    val montoAPagar: Int = 0
+    val montoAPagar: Int = 0,
+    val planId: String? = null
 )
+
+data class RegistroCompromisoEjecutivoRequest(
+    val rut: String,
+    val concepto: String,
+    val monto: Int,
+    val vencimiento: String,
+    val cantidad: Int?
+)
+
+data class EditarCuotaEjecutivoRequest(val monto: Int, val vencimiento: String)
+data class AnularCompromisoEjecutivoRequest(val motivo: String)
+
+data class AsociarServicioRequest(
+    val usuarioId: Long,
+    val nombreEmpresa: String,
+    val rutPagador: String,
+    val alias: String
+)
+
+data class PlanCuotasRequest(val usuarioId: Long, val cantidad: Int)
+
+data class AplazamientoRequest(val usuarioId: Long)
 
 data class CompromisoRequest(
     val folio: String,
@@ -86,7 +110,7 @@ data class CompromisoRequest(
     val numeroCuota: String? = null
 )
 
-data class PagoRequest(val canal: String? = "App")
+data class PagoRequest(val medioPago: String, val canal: String? = "App")
 
 data class ComprobanteDto(
     val numero: String,

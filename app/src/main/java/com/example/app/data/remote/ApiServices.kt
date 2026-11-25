@@ -1,5 +1,6 @@
 package com.example.app.data.remote
 
+import com.example.app.model.Servicio
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -29,6 +30,37 @@ interface UsuariosApi {
 }
 
 interface CobranzaApi {
+    @GET("api/cobranza/ejecutivos/{id}/compromisos")
+    suspend fun compromisosEjecutivo(@Path("id") id: Long): List<CompromisoDto>
+
+    @GET("api/cobranza/ejecutivos/{id}/montos-pagados")
+    suspend fun montosPagadosEjecutivo(@Path("id") id: Long): Map<String, Int>
+
+    @POST("api/cobranza/ejecutivos/{id}/compromisos")
+    suspend fun registrarCompromisoEjecutivo(
+        @Path("id") id: Long, @Body solicitud: RegistroCompromisoEjecutivoRequest
+    ): List<CompromisoDto>
+
+    @PATCH("api/cobranza/ejecutivos/{id}/compromisos/{folio}/cuota")
+    suspend fun editarCuotaEjecutivo(@Path("id") id: Long, @Path("folio") folio: String,
+        @Body solicitud: EditarCuotaEjecutivoRequest): CompromisoDto
+
+    @PATCH("api/cobranza/ejecutivos/{id}/compromisos/{folio}/anulacion")
+    suspend fun anularCompromisoEjecutivo(@Path("id") id: Long, @Path("folio") folio: String,
+        @Body solicitud: AnularCompromisoEjecutivoRequest): CompromisoDto
+
+    @GET("api/cobranza/servicios")
+    suspend fun servicios(@Query("usuarioId") usuarioId: Long): List<Servicio>
+
+    @POST("api/cobranza/servicios")
+    suspend fun asociarServicio(@Body solicitud: AsociarServicioRequest): Servicio
+
+    @POST("api/cobranza/compromisos/{folio}/cuotas")
+    suspend fun crearCuotas(@Path("folio") folio: String, @Body solicitud: PlanCuotasRequest): List<CompromisoDto>
+
+    @POST("api/cobranza/compromisos/{folio}/cuotas/aplazamiento")
+    suspend fun aplazarCuota(@Path("folio") folio: String, @Body solicitud: AplazamientoRequest): List<CompromisoDto>
+
     @GET("api/cobranza/compromisos")
     suspend fun compromisos(@Query("usuarioId") usuarioId: Long? = null, @Query("estado") estado: String? = null): List<CompromisoDto>
 

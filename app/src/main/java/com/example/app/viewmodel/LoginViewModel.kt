@@ -1,6 +1,7 @@
 package com.example.app.viewmodel
 
 import androidx.lifecycle.ViewModel
+import com.example.app.data.remote.Resultado
 import com.example.app.model.LoginUiState
 import com.example.app.model.Usuario
 import com.example.app.validacion.Validaciones
@@ -41,10 +42,12 @@ class LoginViewModel : ViewModel() {
         }
     }
 
-    fun iniciarSesion(
-        autenticar: (String, String) -> Usuario?
-    ): Usuario? {
+    suspend fun iniciarSesion(
+        autenticar: suspend (String, String) -> Resultado<Usuario>,
+        onLoginExitoso: suspend (Usuario) -> Unit
+    ) {
         val estado = _uiState.value
+        if (estado.cargando) return
 
         val errorIdentificador = when {
             estado.identificador.isBlank() ->
@@ -80,35 +83,19 @@ class LoginViewModel : ViewModel() {
             )
         }
 
-        if (errorIdentificador != null || errorContrasena != null) {
-            return null
-        }
+        if (errorIdentificador != null || errorContrasena != null) return
 
-        val usuario = try {
-            autenticar(
-                estado.identificador.trim(),
-                estado.contrasena
-            )
-        } catch (_: android.database.sqlite.SQLiteException) {
-            _uiState.update {
-                it.copy(
-                    error = "No se pudo iniciar sesión. Intenta nuevamente."
-                )
+        _uiState.update { it.copy(cargando = true) }
+        try {
+            when (val resultado = autenticar(estado.identificador.trim(), estado.contrasena)) {
+                is Resultado.Ok -> {
+                    onLoginExitoso(resultado.dato)
+                    _uiState.value = LoginUiState()
+                }
+                is Resultado.Error -> _uiState.update { it.copy(error = resultado.mensaje) }
             }
-            return null
+        } finally {
+            _uiState.update { it.copy(cargando = false) }
         }
-
-        if (usuario == null) {
-            _uiState.update {
-                it.copy(
-                    error = "Correo, RUT o contraseña incorrectos."
-                )
-            }
-            return null
-        }
-
-        _uiState.value = LoginUiState()
-
-        return usuario
     }
 }
