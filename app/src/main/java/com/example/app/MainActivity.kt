@@ -13,6 +13,7 @@ import com.example.app.ui.theme.AppTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(R.style.Theme_App)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
