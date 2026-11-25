@@ -1,6 +1,8 @@
 package com.example.app.viewmodel
 
+import com.example.app.data.remote.Resultado
 import com.example.app.model.LoginUiState
+import kotlinx.coroutines.runBlocking
 import com.example.app.model.Usuario
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -9,7 +11,6 @@ import org.junit.Before
 import org.junit.Test
 
 // Cada prueba sigue tres pasos: preparar, ejecutar y verificar.
-// La función de autenticación simulada permite probar el login sin abrir SQLite.
 class LoginViewModelTest {
 
     private lateinit var viewModel: LoginViewModel
@@ -20,18 +21,17 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun iniciarSesion_conCamposVacios_muestraErroresSinAutenticar() {
-        val usuario = viewModel.iniciarSesion { _, _ ->
-            error("El formulario vacío no debe intentar autenticar")
-        }
-
-        assertNull(usuario)
+    fun iniciarSesion_conCamposVacios_muestraErroresSinAutenticar() = runBlocking {
+        viewModel.iniciarSesion(
+            autenticar = { _, _ -> error("El formulario vacío no debe intentar autenticar") },
+            onLoginExitoso = { error("El formulario vacío no debe iniciar sesión") }
+        )
         assertEquals("Ingresa tu correo o RUT", viewModel.uiState.value.errorIdentificador)
         assertEquals("Ingresa tu contraseña", viewModel.uiState.value.errorContrasena)
     }
 
     @Test
-    fun iniciarSesion_conCredencialesValidas_devuelveUsuarioYLimpiaFormulario() {
+    fun iniciarSesion_conCredencialesValidas_devuelveUsuarioYLimpiaFormulario() = runBlocking {
         // Preparar
         val usuarioEsperado = Usuario(
             id = 1L,
@@ -45,11 +45,15 @@ class LoginViewModelTest {
         viewModel.cambiarContrasena("Clave1!")
 
         // Ejecutar
-        val usuario = viewModel.iniciarSesion { identificador, contrasena ->
-            assertEquals(usuarioEsperado.rut, identificador)
-            assertEquals("Clave1!", contrasena)
-            usuarioEsperado
-        }
+        var usuario: Usuario? = null
+        viewModel.iniciarSesion(
+            autenticar = { identificador, contrasena ->
+                assertEquals(usuarioEsperado.rut, identificador)
+                assertEquals("Clave1!", contrasena)
+                Resultado.Ok(usuarioEsperado)
+            },
+            onLoginExitoso = { usuario = it }
+        )
 
         // Verificar
         assertSame(usuarioEsperado, usuario)
@@ -57,19 +61,23 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun iniciarSesion_conCredencialesIncorrectas_muestraErrorGeneral() {
+    fun iniciarSesion_conCredencialesIncorrectas_muestraErrorGeneral() = runBlocking {
         viewModel.cambiarIdentificador("ana@example.com")
         viewModel.cambiarContrasena("OtraClave1!")
 
-        val usuario = viewModel.iniciarSesion { _, _ -> null }
-
-        assertNull(usuario)
+        viewModel.iniciarSesion(
+            autenticar = { _, _ -> Resultado.Error("Correo, RUT o contraseña incorrectos.", 401) },
+            onLoginExitoso = { error("Las credenciales incorrectas no deben iniciar sesión") }
+        )
         assertEquals("Correo, RUT o contraseña incorrectos.", viewModel.uiState.value.error)
     }
 
     @Test
-    fun cambiarIdentificador_despuesDeUnError_borraSoloElErrorDelIdentificador() {
-        viewModel.iniciarSesion { _, _ -> null }
+    fun cambiarIdentificador_despuesDeUnError_borraSoloElErrorDelIdentificador() = runBlocking {
+        viewModel.iniciarSesion(
+            autenticar = { _, _ -> error("El formulario vacío no debe intentar autenticar") },
+            onLoginExitoso = { error("El formulario vacío no debe iniciar sesión") }
+        )
 
         viewModel.cambiarIdentificador("ana@example.com")
 

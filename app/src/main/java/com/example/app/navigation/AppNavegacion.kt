@@ -5,6 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -14,6 +15,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.app.data.remote.Resultado
 import com.example.app.model.CatalogoServicios
 import com.example.app.ui.screens.AgenteScreen
 import com.example.app.ui.screens.EjecutivoScreen
@@ -36,23 +38,22 @@ import com.example.app.ui.screens.ReportarProblemaScreen
 import com.example.app.ui.screens.UsuarioScreen
 import com.example.app.viewmodel.PagoFlexViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
 fun AppNavegacion() {
     val navController = rememberNavController()
+    val scope = rememberCoroutineScope()
     val pagoFlexViewModel: PagoFlexViewModel = viewModel()
 
     val compromisos by pagoFlexViewModel.compromisos.collectAsStateWithLifecycle()
     val reportes by pagoFlexViewModel.reportes.collectAsStateWithLifecycle()
     val usuarioActual by pagoFlexViewModel.usuarioActual.collectAsStateWithLifecycle()
     val servicios by pagoFlexViewModel.servicios.collectAsStateWithLifecycle()
+    val montosPagadosEjecutivo by pagoFlexViewModel.montosPagados.collectAsStateWithLifecycle()
 
-    val usuarioGuardado = remember {
-        pagoFlexViewModel.recuperarSesion()
-    }
-
-    fun cargarDatosUsuario(usuarioId: Long, rolNombre: String? = null) {
+    suspend fun cargarDatosUsuario(usuarioId: Long, rolNombre: String? = null) = withContext(Dispatchers.IO) {
         val esEjecutivo = rolNombre?.equals("EJECUTIVO", ignoreCase = true) == true
         val compromisosVisibles = when {
             esEjecutivo -> pagoFlexViewModel.listarCompromisosEjecutivo(usuarioId)
@@ -63,7 +64,6 @@ fun AppNavegacion() {
         pagoFlexViewModel.cargarReportes(
             when {
                 rolNombre == "AGENTE" -> pagoFlexViewModel.listarReportes()
-                esEjecutivo -> pagoFlexViewModel.listarReportesEjecutivo(usuarioId)
                 else -> pagoFlexViewModel.listarReportes().filter { it.folio in foliosVisibles }
             }
         )
@@ -73,9 +73,12 @@ fun AppNavegacion() {
         )
 
         pagoFlexViewModel.cargarCompromisos(compromisosVisibles)
+        if (esEjecutivo) pagoFlexViewModel.cargarMontosPagadosEjecutivo(usuarioId)
     }
 
-    LaunchedEffect(usuarioGuardado) {
+    LaunchedEffect(Unit) {
+        val usuarioGuardado = withContext(Dispatchers.IO) { pagoFlexViewModel.recuperarSesion() }
+        if (navController.currentDestination?.route != Ruta.Login.ruta) return@LaunchedEffect
         usuarioGuardado?.let { usuario ->
             pagoFlexViewModel.iniciarSesion(usuario)
             cargarDatosUsuario(usuario.id, usuario.rolNombre)
@@ -150,13 +153,15 @@ fun AppNavegacion() {
             FormularioScreen(
                 onGuardarUsuario = pagoFlexViewModel::registrarUsuario,
                 onRegistroExitoso = { usuario ->
-                    pagoFlexViewModel.guardarSesion(usuario.id)
-                    pagoFlexViewModel.iniciarSesion(usuario)
-                    cargarDatosUsuario(usuario.id, usuario.rolNombre)
+                    scope.launch {
+                        pagoFlexViewModel.guardarSesion(usuario.id)
+                        pagoFlexViewModel.iniciarSesion(usuario)
+                        cargarDatosUsuario(usuario.id, usuario.rolNombre)
 
-                    navController.navigate(rutaParaRol(usuario.rolNombre)) {
-                        popUpTo(Ruta.Login.ruta) {
-                            inclusive = true
+                        navController.navigate(rutaParaRol(usuario.rolNombre)) {
+                            popUpTo(Ruta.Login.ruta) {
+                                inclusive = true
+                            }
                         }
                     }
                 },
@@ -215,6 +220,9 @@ fun AppNavegacion() {
         composable(Ruta.ServiciosAsociados.ruta) {
             ServiciosAsociadosScreen(
                 servicios = servicios.filter { it.usuarioId == usuarioActual?.id },
+                compromisos = compromisos.filter { it.usuario.id == usuarioActual?.id },
+                onVerCompromiso = { folio -> navController.navigate(Ruta.Detalle.crear(folio)) },
+                onAgregarServicio = { navController.navigate(Ruta.AgregarServicio.ruta) },
                 onVolver = { navController.navigateUp() }
             )
         }
@@ -292,7 +300,9 @@ fun AppNavegacion() {
 
                         if (guardado) {
                             pagoFlexViewModel.iniciarSesion(actualizado)
-                            cargarDatosUsuario(actualizado.id, actualizado.rolNombre)
+                            scope.launch {
+                                cargarDatosUsuario(actualizado.id, actualizado.rolNombre)
+                            }
                         }
 
                         guardado
@@ -362,21 +372,15 @@ fun AppNavegacion() {
                         navController.popBackStack(Ruta.Usuario.ruta, false)
                     },
                     onGuardarServicio = { servicio ->
-                        val idServicio = pagoFlexViewModel.insertarServicio(
-                            servicio
-                        )
-
-                        if (idServicio == -1L) {
-                            false
-                        } else {
-                            pagoFlexViewModel.cargarServicios(
-                                pagoFlexViewModel.listarServicios(usuario.id)
-                            )
-                            pagoFlexViewModel.cargarCompromisos(
+                        val resultado = pagoFlexViewModel.insertarServicio(servicio)
+                        if (resultado is Resultado.Ok) {
+                            pagoFlexViewModel.agregarServicio(resultado.dato)
+                            val actualizados = withContext(Dispatchers.IO) {
                                 pagoFlexViewModel.listarCompromisos(usuario.id)
-                            )
-                            true
+                            }
+                            pagoFlexViewModel.cargarCompromisos(actualizados)
                         }
+                        resultado
                     }
                 )
             }
@@ -507,13 +511,17 @@ fun AppNavegacion() {
                         onModificarCuota = { monto, fecha ->
                             val id = usuarioActual?.id
                             val guardado = id != null && pagoFlexViewModel.modificarCuotaEjecutivo(id, folio, monto, fecha)
-                            if (guardado && id != null) pagoFlexViewModel.cargarCompromisos(pagoFlexViewModel.listarCompromisosEjecutivo(id))
+                            if (guardado) withContext(Dispatchers.IO) {
+                                pagoFlexViewModel.cargarCompromisos(pagoFlexViewModel.listarCompromisosEjecutivo(id))
+                            }
                             guardado
                         },
                         onAnular = { motivo ->
                             val id = usuarioActual?.id
                             val anulado = id != null && pagoFlexViewModel.anularCompromisoEjecutivo(id, folio, motivo)
-                            if (anulado && id != null) pagoFlexViewModel.cargarCompromisos(pagoFlexViewModel.listarCompromisosEjecutivo(id))
+                            if (anulado) withContext(Dispatchers.IO) {
+                                pagoFlexViewModel.cargarCompromisos(pagoFlexViewModel.listarCompromisosEjecutivo(id))
+                            }
                             anulado
                         }
                     )
@@ -522,28 +530,24 @@ fun AppNavegacion() {
                     onCrearCuotas = if (
                         usuarioActual?.rolNombre == "CLIENTE" &&
                         CatalogoServicios.buscar(compromiso.empresa) != null &&
-                        !pagoFlexViewModel.esEmpresaGestionada(compromiso.empresa) &&
+                        !CatalogoServicios.esDuoc(compromiso.empresa) &&
                         compromiso.estado in listOf("Pendiente", "Vencido") &&
                         compromiso.numeroCuota.isBlank() && compromiso.planId.isBlank()
                     ) {
                         { cantidad ->
-                            val id = usuarioActual?.id
-                            val guardado = id != null && pagoFlexViewModel.crearCuotasServicio(id, folio, cantidad)
-                            if (guardado && id != null) pagoFlexViewModel.cargarCompromisos(pagoFlexViewModel.listarCompromisos(id))
-                            guardado
+                            usuarioActual?.id?.let { pagoFlexViewModel.crearCuotasServicio(it, folio, cantidad) }
+                                ?: Resultado.Error("Inicia sesión para crear un plan de cuotas")
                         }
                     } else null,
                     onAplazarCuota = if (
                         usuarioActual?.rolNombre == "CLIENTE" &&
                         CatalogoServicios.buscar(compromiso.empresa) != null &&
-                        !pagoFlexViewModel.esEmpresaGestionada(compromiso.empresa) &&
+                        !CatalogoServicios.esDuoc(compromiso.empresa) &&
                         compromiso.estado == "Pendiente" && compromiso.planId.isNotBlank()
                     ) {
                         {
-                            val id = usuarioActual?.id
-                            val aplazada = id != null && pagoFlexViewModel.aplazarCuotaServicio(id, folio)
-                            if (aplazada && id != null) pagoFlexViewModel.cargarCompromisos(pagoFlexViewModel.listarCompromisos(id))
-                            aplazada
+                            usuarioActual?.id?.let { pagoFlexViewModel.aplazarCuotaServicio(it, folio) }
+                                ?: Resultado.Error("Inicia sesión para aplazar una cuota")
                         }
                     } else null,
                     montoPagado = if (compromiso.estado == "Pagado") pagoFlexViewModel.buscarComprobante(folio)?.montoPagado else null,
@@ -627,7 +631,9 @@ fun AppNavegacion() {
                 onGuardar = { rut, concepto, monto, fecha, cuota ->
                     val id = usuarioActual?.id
                     val guardado = id != null && pagoFlexViewModel.registrarCompromisoEjecutivo(id, rut, concepto, monto, fecha, cuota)
-                    if (guardado && id != null) pagoFlexViewModel.cargarCompromisos(pagoFlexViewModel.listarCompromisosEjecutivo(id))
+                    if (guardado) withContext(Dispatchers.IO) {
+                                pagoFlexViewModel.cargarCompromisos(pagoFlexViewModel.listarCompromisosEjecutivo(id))
+                            }
                     guardado
                 }
             )
@@ -637,7 +643,7 @@ fun AppNavegacion() {
             EjecutivoScreen(
                 usuario = usuarioActual,
                 compromisos = compromisos,
-                montosPagados = usuarioActual?.let { pagoFlexViewModel.montosPagadosEjecutivo(it.id) } ?: emptyMap(),
+                montosPagados = montosPagadosEjecutivo,
                 onCerrarSesion = {
                     pagoFlexViewModel.cerrarSesion()
                     navController.navigate(Ruta.Login.ruta) {

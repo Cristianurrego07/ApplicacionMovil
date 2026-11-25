@@ -1,10 +1,8 @@
 package com.example.app.viewmodel
 
 import android.app.Application
-import android.database.sqlite.SQLiteException
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
-import com.example.app.data.PagoFlexDbHelper
 import com.example.app.data.SesionPreferencias
 import com.example.app.data.remote.PagoFlexRepository
 import com.example.app.data.remote.Resultado
@@ -24,7 +22,6 @@ class PagoFlexViewModel(
     application: Application
 ) : AndroidViewModel(application) {
 
-    private val db = PagoFlexDbHelper(application)
     private val repo = PagoFlexRepository()
     private val sesion = SesionPreferencias(application)
 
@@ -43,13 +40,8 @@ class PagoFlexViewModel(
     private val _reportes = MutableStateFlow<List<Reporte>>(emptyList())
     val reportes: StateFlow<List<Reporte>> = _reportes.asStateFlow()
 
-    private fun <T> escritura(fallo: T, accion: () -> T): T {
-        return try {
-            accion()
-        } catch (_: SQLiteException) {
-            fallo
-        }
-    }
+    private val _montosPagados = MutableStateFlow<Map<String, Int>>(emptyMap())
+    val montosPagados: StateFlow<Map<String, Int>> = _montosPagados.asStateFlow()
 
     private fun <T> red(bloque: suspend () -> Resultado<T>): T? {
         return when (val r = runBlocking(Dispatchers.IO) { bloque() }) {
@@ -78,8 +70,8 @@ class PagoFlexViewModel(
         }
     }
 
-    fun iniciarSesion(identificador: String, contrasena: String): Usuario? =
-        red { repo.iniciarSesion(identificador, contrasena) }
+    suspend fun iniciarSesion(identificador: String, contrasena: String): Resultado<Usuario> =
+        repo.iniciarSesion(identificador, contrasena)
 
     fun iniciarSesion(usuario: Usuario) {
         _usuarioActual.value = usuario
@@ -91,6 +83,7 @@ class PagoFlexViewModel(
         _servicios.value = emptyList()
         _compromisos.value = emptyList()
         _reportes.value = emptyList()
+        _montosPagados.value = emptyMap()
     }
 
     fun registrarUsuario(usuario: Usuario, clave: String): Usuario? =
@@ -123,7 +116,7 @@ class PagoFlexViewModel(
     }
 
     fun confirmarPago(folio: String, medio: String): Comprobante? =
-        red { repo.confirmarPago(folio, canal = "App") }
+        red { repo.confirmarPago(folio, medioPago = medio) }
 
     fun listarComprobantes(id: Long): List<Comprobante> =
         red { repo.listarComprobantes(id) } ?: emptyList()
@@ -157,44 +150,56 @@ class PagoFlexViewModel(
     fun resolverReporte(folio: String, estado: String, respuesta: String): Boolean =
         redOk { repo.resolverReporte(folio, estado, respuesta) }
 
-    fun listarCompromisosEjecutivo(id: Long): List<Compromiso> = db.listarCompromisosEjecutivo(id)
+    fun listarCompromisosEjecutivo(id: Long): List<Compromiso> =
+        red { repo.listarCompromisosEjecutivo(id) } ?: emptyList()
 
-    fun montosPagadosEjecutivo(id: Long): Map<String, Int> = db.montosPagadosEjecutivo(id)
+    suspend fun cargarMontosPagadosEjecutivo(id: Long) {
+        when (val resultado = repo.montosPagadosEjecutivo(id)) {
+            is Resultado.Ok -> _montosPagados.value = resultado.dato
+            is Resultado.Error -> Log.w("PagoFlex", resultado.mensaje)
+        }
+    }
 
-    fun registrarCompromisoEjecutivo(id: Long, rut: String, concepto: String, monto: Int, fecha: String, cuota: String): Boolean =
-        escritura(false) { db.registrarCompromisoEjecutivo(id, rut, concepto, monto, fecha, cuota) }
+    suspend fun registrarCompromisoEjecutivo(id: Long, rut: String, concepto: String, monto: Int, fecha: String, cuota: String): Boolean =
+        repo.registrarCompromisoEjecutivo(id, rut, concepto, monto, fecha, cuota.toIntOrNull()) is Resultado.Ok
 
-    fun modificarCuotaEjecutivo(id: Long, folio: String, monto: Int, fecha: String): Boolean =
-        escritura(false) { db.modificarCuotaEjecutivo(id, folio, monto, fecha) }
+    suspend fun modificarCuotaEjecutivo(id: Long, folio: String, monto: Int, fecha: String): Boolean =
+        repo.modificarCuotaEjecutivo(id, folio, monto, fecha) is Resultado.Ok
 
-    fun anularCompromisoEjecutivo(id: Long, folio: String, motivo: String): Boolean =
-        escritura(false) { db.anularCompromisoEjecutivo(id, folio, motivo) }
+    suspend fun anularCompromisoEjecutivo(id: Long, folio: String, motivo: String): Boolean =
+        repo.anularCompromisoEjecutivo(id, folio, motivo) is Resultado.Ok
 
-    fun listarReportesEjecutivo(id: Long): List<Reporte> = db.listarReportesEjecutivo(id)
-
-    fun listarServicios(id: Long): List<Servicio> = db.listarServicios(id)
+    suspend fun listarServicios(id: Long): List<Servicio> =
+        when (val respuesta = repo.listarServicios(id)) {
+            is Resultado.Ok -> respuesta.dato
+            is Resultado.Error -> _servicios.value.filter { it.usuarioId == id }
+        }
 
     fun cargarServicios(servicios: List<Servicio>) {
         _servicios.value = servicios
     }
 
-    fun insertarServicio(servicio: Servicio): Long =
-        escritura(-1L) { db.insertarServicio(servicio) }
+    suspend fun insertarServicio(servicio: Servicio): Resultado<Servicio> =
+        repo.asociarServicio(servicio)
 
-    fun esEmpresaGestionada(nombre: String): Boolean = db.esEmpresaGestionada(nombre)
+    suspend fun crearCuotasServicio(usuarioId: Long, folio: String, cantidad: Int) =
+        incorporarCuotas(repo.crearCuotas(usuarioId, folio, cantidad))
 
-    fun crearCuotasServicio(usuarioId: Long, folio: String, cantidad: Int): Boolean =
-        escritura(false) { db.crearCuotasServicio(usuarioId, folio, cantidad) }
+    suspend fun aplazarCuotaServicio(usuarioId: Long, folio: String) =
+        incorporarCuotas(repo.aplazarCuota(usuarioId, folio))
 
-    fun aplazarCuotaServicio(usuarioId: Long, folio: String): Boolean =
-        escritura(false) { db.aplazarCuotaServicio(usuarioId, folio) }
+    private fun incorporarCuotas(resultado: Resultado<List<Compromiso>>): Resultado<List<Compromiso>> {
+        if (resultado is Resultado.Ok) {
+            val modificados = resultado.dato.map { it.folio }.toSet()
+            _compromisos.update { actuales ->
+                (actuales.filterNot { it.folio in modificados } + resultado.dato)
+                    .sortedBy { it.vencimiento }
+            }
+        }
+        return resultado
+    }
 
     fun agregarServicio(servicio: Servicio) {
         _servicios.update { lista -> listOf(servicio) + lista }
-    }
-
-    override fun onCleared() {
-        db.close()
-        super.onCleared()
     }
 }

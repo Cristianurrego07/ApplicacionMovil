@@ -65,7 +65,7 @@ class ServicioViewModel : ViewModel() {
         )
     }
 
-    fun onGuardadoFallido() {
-        _uiState.update { it.copy(errorRegistro = "No se pudo guardar. Revisa si ya agregaste este servicio.") }
+    fun onGuardadoFallido(mensaje: String) {
+        _uiState.update { it.copy(errorRegistro = mensaje) }
     }
 }

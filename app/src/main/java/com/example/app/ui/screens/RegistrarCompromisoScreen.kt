@@ -16,6 +16,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -29,9 +35,11 @@ import com.example.app.viewmodel.CompromisoEjecutivoViewModel
 @Composable
 fun RegistrarCompromisoScreen(
     onVolver: () -> Unit,
-    onGuardar: (String, String, Int, String, String) -> Boolean,
+    onGuardar: suspend (String, String, Int, String, String) -> Boolean,
     vm: CompromisoEjecutivoViewModel = viewModel()
 ) {
+    val scope = rememberCoroutineScope()
+    var guardando by remember { mutableStateOf(false) }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -111,10 +119,16 @@ fun RegistrarCompromisoScreen(
                 Text(mensaje)
             }
             BotonPrincipal(
-                texto = "Registrar compromiso",
+                texto = if (guardando) "Guardando…" else "Registrar compromiso",
+                enabled = !guardando,
                 onClick = {
-                    if (vm.guardar(onGuardar)) {
-                        onVolver()
+                    guardando = true
+                    scope.launch {
+                        try {
+                            if (vm.guardar(onGuardar)) onVolver()
+                        } finally {
+                            guardando = false
+                        }
                     }
                 }
             )

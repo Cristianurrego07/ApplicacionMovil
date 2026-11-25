@@ -1,15 +1,17 @@
 package com.example.app.notificaciones
 
 import android.content.Context
-import androidx.work.Worker
+import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.example.app.data.PagoFlexDbHelper
 import com.example.app.data.SesionPreferencias
+import com.example.app.data.remote.PagoFlexRepository
+import com.example.app.data.remote.Resultado
+import java.text.ParseException
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-class AvisosWorker(context: Context, parametros: WorkerParameters) : Worker(context, parametros) {
-    override fun doWork(): Result {
+class AvisosWorker(context: Context, parametros: WorkerParameters) : CoroutineWorker(context, parametros) {
+    override suspend fun doWork(): Result {
         val usuarioId = SesionPreferencias(applicationContext).leer()
         if (usuarioId == -1L) return Result.success()
 
@@ -18,12 +20,22 @@ class AvisosWorker(context: Context, parametros: WorkerParameters) : Worker(cont
 
         val formato = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         formato.isLenient = false
-        val db = PagoFlexDbHelper(applicationContext)
+        val repositorio = PagoFlexRepository()
 
         return try {
-            val usuario = db.buscarPorId(usuarioId)
-            val esEjecutivo = usuario?.rolNombre?.equals("EJECUTIVO", ignoreCase = true) == true
-            val compromisos = if (esEjecutivo) db.listarCompromisosEjecutivo(usuarioId) else db.listarCompromisos(usuarioId)
+            val usuario = when (val resultado = repositorio.buscarPorId(usuarioId)) {
+                is Resultado.Ok -> resultado.dato
+                is Resultado.Error -> return if (resultado.codigo == 404) Result.success() else Result.retry()
+            }
+            val consulta = if (usuario.rolNombre.equals("EJECUTIVO", ignoreCase = true)) {
+                repositorio.listarCompromisosEjecutivo(usuarioId)
+            } else {
+                repositorio.listarCompromisos(usuarioId)
+            }
+            val compromisos = when (consulta) {
+                is Resultado.Ok -> consulta.dato
+                is Resultado.Error -> return if (consulta.codigo == 409) Result.success() else Result.retry()
+            }
             val hoyTexto = formato.format(java.util.Date())
             val formatoUtc = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
                 isLenient = false
@@ -55,10 +67,8 @@ class AvisosWorker(context: Context, parametros: WorkerParameters) : Worker(cont
                 }
             }
             Result.success()
-        } catch (_: Exception) {
+        } catch (_: ParseException) {
             Result.retry()
-        } finally {
-            db.close()
         }
     }
 }

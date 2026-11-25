@@ -5,8 +5,10 @@ import com.example.app.model.Comprobante
 import com.example.app.model.Compromiso
 import com.example.app.model.Reporte
 import com.example.app.model.Rol
+import com.example.app.model.Servicio
 import com.example.app.model.Usuario
 import com.google.gson.Gson
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
@@ -28,10 +30,12 @@ class PagoFlexRepository(
     private suspend fun <T> llamar(bloque: suspend () -> T): Resultado<T> = withContext(Dispatchers.IO) {
         try {
             Resultado.Ok(bloque())
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: HttpException) {
             val cuerpo = try { gson.fromJson(e.response()?.errorBody()?.string(), ErrorApi::class.java) } catch (_: Exception) { null }
             val detalle = cuerpo?.detalles?.values?.firstOrNull()
-            Resultado.Error(detalle ?: cuerpo?.mensaje ?: "Error ${e.code()} del servidor", e.code())
+            Resultado.Error(detalle ?: cuerpo?.mensaje ?: cuerpo?.detail ?: "Error ${e.code()} del servidor", e.code())
         } catch (_: IOException) {
             Resultado.Error("No hay conexión con el servidor. Revisa que el gateway esté encendido.")
         } catch (e: Exception) {
@@ -74,8 +78,37 @@ class PagoFlexRepository(
     suspend fun restablecerContrasena(correo: String, codigo: String, nueva: String) =
         llamar { usuarios.restablecer(RestablecerContrasenaRequest(correo, codigo, nueva)).mensaje }
 
+    suspend fun listarCompromisosEjecutivo(id: Long) =
+        llamar { cobranza.compromisosEjecutivo(id).map { it.aModelo() } }
+
+    suspend fun montosPagadosEjecutivo(id: Long) = llamar { cobranza.montosPagadosEjecutivo(id) }
+
+    suspend fun registrarCompromisoEjecutivo(id: Long, rut: String, concepto: String, monto: Int,
+                                            fecha: String, cantidad: Int?) =
+        llamar { cobranza.registrarCompromisoEjecutivo(id,
+            RegistroCompromisoEjecutivoRequest(rut, concepto, monto, fecha, cantidad)) }
+
+    suspend fun modificarCuotaEjecutivo(id: Long, folio: String, monto: Int, fecha: String) =
+        llamar { cobranza.editarCuotaEjecutivo(id, folio, EditarCuotaEjecutivoRequest(monto, fecha)) }
+
+    suspend fun anularCompromisoEjecutivo(id: Long, folio: String, motivo: String) =
+        llamar { cobranza.anularCompromisoEjecutivo(id, folio, AnularCompromisoEjecutivoRequest(motivo)) }
+
+    suspend fun listarServicios(usuarioId: Long) = llamar { cobranza.servicios(usuarioId) }
+    suspend fun asociarServicio(servicio: Servicio) = llamar {
+        cobranza.asociarServicio(
+            AsociarServicioRequest(servicio.usuarioId, servicio.nombreEmpresa, servicio.rutPagador, servicio.alias)
+        )
+    }
+
     suspend fun listarCompromisos(usuarioId: Long? = null, estado: String? = null) =
         llamar { cobranza.compromisos(usuarioId, estado).map { it.aModelo() } }
+
+    suspend fun crearCuotas(usuarioId: Long, folio: String, cantidad: Int) =
+        llamar { cobranza.crearCuotas(folio, PlanCuotasRequest(usuarioId, cantidad)).map { it.aModelo() } }
+
+    suspend fun aplazarCuota(usuarioId: Long, folio: String) =
+        llamar { cobranza.aplazarCuota(folio, AplazamientoRequest(usuarioId)).map { it.aModelo() } }
 
     suspend fun crearCompromiso(
         folio: String, usuarioId: Long, rut: String?, nombre: String?, empresa: String,
@@ -87,8 +120,8 @@ class PagoFlexRepository(
     suspend fun eliminarCompromiso(folio: String) = llamar { cobranza.eliminar(folio) }
     suspend fun marcarCompromisoEnRevision(folio: String) = llamar { cobranza.marcarEnRevision(folio).aModelo() }
 
-    suspend fun confirmarPago(folio: String, canal: String = "App") =
-        llamar { cobranza.pagar(folio, PagoRequest(canal)).aModelo() }
+    suspend fun confirmarPago(folio: String, medioPago: String, canal: String = "App") =
+        llamar { cobranza.pagar(folio, PagoRequest(medioPago, canal)).aModelo() }
 
     suspend fun buscarComprobante(folio: String) = llamar { cobranza.comprobantePorFolio(folio).aModelo() }
     suspend fun listarComprobantes(usuarioId: Long) = llamar { cobranza.comprobantes(usuarioId).map { it.aModelo() } }
@@ -126,7 +159,7 @@ private fun CompromisoDto.aModelo() = Compromiso(
     folio = folio, empresa = empresa,
     usuario = Usuario(id = usuarioId, rut = rutUsuario.orEmpty(), nombre = nombreUsuario.orEmpty(), correo = "", rolId = 1L),
     concepto = concepto, monto = monto, vencimiento = vencimiento, estado = estado,
-    recargo = recargo ?: 0, numeroCuota = numeroCuota.orEmpty()
+    recargo = recargo ?: 0, numeroCuota = numeroCuota.orEmpty(), planId = planId.orEmpty()
 )
 
 private fun ComprobanteDto.aModelo() = Comprobante(
